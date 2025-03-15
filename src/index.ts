@@ -8,8 +8,3 @@ export {
   CursorPaginatorParams,
   CursorPaginatorPaginateParams,
 } from "./cursor-paginator";
-export {
-  PagePaginator,
-  PagePaginatorParams,
-  PagePaginatorPaginateParams,
-} from "./page-paginator";
