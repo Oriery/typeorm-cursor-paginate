@@ -10,7 +10,11 @@
   <a href="https://david-dm.org/wan2land/typeorm-paginator?type=dev"><img alt="devDependencies Status" src="https://img.shields.io/david/dev/wan2land/typeorm-paginator.svg?style=flat-square" /></a>
 </p>
 
-It provides cursor-based pagination and page-based pagination. Even if there is a transformer in the column, it works perfectly.
+// TODO update links to point to the new repo
+// TODO write that this is a fork of the original repo
+// TODO write description with important original features
+
+Provides cursor-based pagination. Even if there is a transformer in the column, it works perfectly.
 
 ## Installation
 
@@ -23,7 +27,7 @@ npm install typeorm-paginator --save
 ### Cursor-based Pagination
 
 ```typescript
-import { CursorPaginator } from 'typeorm-paginator'
+import { CursorPaginator } from "typeorm-paginator";
 ```
 
 Single cursor-based pagination.
@@ -33,9 +37,9 @@ const paginator = new CursorPaginator(User, {
   orderBy: {
     id: false,
   },
-})
+});
 
-const pagination = await paginator.paginate(repoUsers.createQueryBuilder())
+const pagination = await paginator.paginate(repoUsers.createQueryBuilder());
 
 expect(pagination).toEqual({
   nodes: [
@@ -49,9 +53,8 @@ expect(pagination).toEqual({
   hasNextPage: false,
   nextPageCursor: expect.any(String),
   prevPageCursor: expect.any(String),
-})
+});
 ```
-
 
 Multi cursor-based pagination.
 
@@ -63,7 +66,10 @@ const paginator = new CursorPaginator(User, {
   ],
 })
 
-const result = await paginator.paginate(repoUsers.createQueryBuilder(), { limit: 2 })
+const result = await paginator.paginate(
+  repoUsers.createQueryBuilder(),
+  { limit: 2 }
+)
 expect(result).toEqual({
   nodes: [
     User { id: 3, name: 'a' },
@@ -75,7 +81,12 @@ expect(result).toEqual({
   nextPageCursor: expect.any(String),
 })
 
-const resultNext = await paginator.paginate(repoUsers.createQueryBuilder(), { limit: 2, nextPageCursor: result.nextPageCursor })
+const resultNext = await paginator.paginate(
+  repoUsers.createQueryBuilder(), 
+  { 
+    limit: 2, 
+    nextPageCursor: result.nextPageCursor 
+  })
 expect(resultNext).toEqual({
   nodes: [
     User { id: 2, name: 'b' },
@@ -87,7 +98,12 @@ expect(resultNext).toEqual({
   nextPageCursor: expect.any(String),
 })
 
-const resultNextNext = await paginator.paginate(repoUsers.createQueryBuilder(), { limit: 2, nextPageCursor: resultNext.nextPageCursor })
+const resultNextNext = await paginator.paginate(
+  repoUsers.createQueryBuilder(), 
+  { 
+    limit: 2, 
+    nextPageCursor: resultNext.nextPageCursor 
+  })
 expect(resultNextNext).toEqual({
   nodes: [
     User { id: 4, name: 'c' },
@@ -99,7 +115,12 @@ expect(resultNextNext).toEqual({
   nextPageCursor: expect.any(String),
 })
 
-const resultNextNextPrev = await paginator.paginate(repoUsers.createQueryBuilder(), { limit: 2, prevPageCursor: resultNextNext.prevPageCursor })
+const resultNextNextPrev = await paginator.paginate(
+  repoUsers.createQueryBuilder(), 
+  { 
+    limit: 2, 
+    prevPageCursor: resultNextNext.prevPageCursor 
+  })
 expect(resultNextNextPrev).toEqual({
   nodes: [
     User { id: 2, name: 'b' },
@@ -109,48 +130,5 @@ expect(resultNextNextPrev).toEqual({
   hasNextPage: true,
   prevPageCursor: expect.any(String),
   nextPageCursor: expect.any(String),
-})
-```
-
-
-### Page-based Pagination
-
-```typescript
-import { PagePaginator } from 'typeorm-paginator'
-```
-
-Single cursor-based pagination.
-
-```typescript
-const paginator = new PagePaginator(User, {
-  orderBy: {
-    id: false,
-  },
-  limit: 3,
-})
-
-const pagination1 = await paginator.paginate(repoUsers.createQueryBuilder())
-
-expect(pagination1).toEqual({
-  nodes: [
-    /*
-    User { id: 5 },
-    User { id: 4 },
-    User { id: 3 },
-    */
-  ],
-  hasNextPage: true,
-})
-
-const pagination1 = await paginator.paginate(repoUsers.createQueryBuilder(), { page: 2 })
-
-expect(pagination1).toEqual({
-  nodes: [
-    /*
-    User { id: 2 },
-    User { id: 1 },
-    */
-  ],
-  hasNextPage: false,
 })
 ```
