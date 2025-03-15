@@ -1,4 +1,4 @@
-import { SelectQueryBuilder, ObjectType } from 'typeorm'
+import { SelectQueryBuilder, ObjectType, ObjectLiteral } from 'typeorm'
 
 import { OrderBy, PromisePagePagination, PagePagination, Nullable, Take } from './interfaces/paginator'
 import { normalizeOrderBy } from './utils/normalizeOrderBy'
@@ -16,7 +16,7 @@ export interface PagePaginatorPaginateParams<TEntity, TColumnNames extends Recor
   orderBy?: OrderBy<TEntity & TColumnNames> | OrderBy<TEntity & TColumnNames>[]
 }
 
-export class PagePaginator<TEntity, TColumnNames extends Record<string, string>> {
+export class PagePaginator<TEntity extends ObjectLiteral, TColumnNames extends Record<string, string>> {
   orderBy: OrderBy<TEntity> | OrderBy<TEntity>[]
   columnNames: Record<string, string>
   takeOptions: Take

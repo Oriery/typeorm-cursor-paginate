@@ -1,11 +1,11 @@
-import { SelectQueryBuilder, ObjectType } from 'typeorm'
+import { SelectQueryBuilder, ObjectType, ObjectLiteral } from 'typeorm'
 
 import { CursorPagination, Cursor, OrderBy, CursorTransformer, Nullable, Take, PromiseCursorPagination } from './interfaces/paginator'
 import { Base64Transformer } from './transformers/base64-transformer'
 import { normalizeOrderBy } from './utils/normalizeOrderBy'
 
 
-export interface CursorPaginatorParams<TEntity, TColumnNames extends Record<string, string>> {
+export interface CursorPaginatorParams<TEntity extends ObjectLiteral, TColumnNames extends Record<string, string>> {
   orderBy: OrderBy<TEntity & TColumnNames> | OrderBy<TEntity & TColumnNames>[]
   columnNames?: TColumnNames | null
   take?: Nullable<Take> | number | null
@@ -18,7 +18,7 @@ export interface CursorPaginatorPaginateParams {
   take?: number | null
 }
 
-export class CursorPaginator<TEntity, TColumnNames extends Record<string, string>> {
+export class CursorPaginator<TEntity extends ObjectLiteral, TColumnNames extends Record<string, string>> {
 
   orders: [string, boolean][] = []
   columnNames: Record<string, string>
