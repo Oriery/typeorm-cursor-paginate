@@ -23,38 +23,24 @@ export interface CursorPaginatorParams<TEntity extends ObjectLiteral> {
    *  otherwise entries might be skipped/duplicated. 
    */
   orderBy: OrderBy<TEntity> | OrderBy<TEntity>[];
-  take?: Nullable<Take> | number | null;
   transformer?: CursorTransformer<TEntity> | null;
 }
 
 export interface CursorPaginatorPaginateParams {
   prevPageCursor?: string | null;
   nextPageCursor?: string | null;
-  take?: number | null;
+  take?: number;
 }
 
 export class CursorPaginator<TEntity extends ObjectLiteral> {
   orders: [string, boolean][] = [];
-  takeOptions: Take;
   transformer: CursorTransformer<TEntity>;
 
   constructor(
     public entity: ObjectType<TEntity>,
-    { orderBy, take, transformer }: CursorPaginatorParams<TEntity>,
+    { orderBy, transformer }: CursorPaginatorParams<TEntity>,
   ) {
     this.orders = normalizeOrderBy(orderBy);
-    this.takeOptions =
-      typeof take === "number"
-        ? {
-            default: take,
-            min: 0,
-            max: Infinity,
-          }
-        : {
-            default: take?.default ?? 20,
-            min: Math.max(0, take?.min ?? 0), // never negative
-            max: take?.max ?? Infinity,
-          };
     this.transformer = transformer ?? new Base64Transformer();
   }
 
@@ -63,13 +49,11 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
     params: CursorPaginatorPaginateParams = {},
     isRaw = false,
   ): Promise<CursorPagination<TEntity>> {
-    const take = Math.max(
-      this.takeOptions.min,
-      Math.min(params.take ?? this.takeOptions.default, this.takeOptions.max),
-    );
+    const take = params.take;
 
     const qbForCount = new SelectQueryBuilder(qb);
 
+    // TODO combine implementations for 2 directions
     if (params.prevPageCursor) {
       try {
         this._applyWhereQuery(
@@ -77,7 +61,7 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
           this.transformer.parse(params.prevPageCursor),
           false,
         );
-      } catch {
+      } catch { // TODO what is this?
         qb.andWhere("1 = 0");
       }
       for (const [key, value] of this.orders) {
@@ -85,10 +69,10 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
       }
 
       let hasPrevPage = false;
-      const query = new SelectQueryBuilder(qb).take(take + 1);
+      const query = take ? new SelectQueryBuilder(qb).take(take + 1) : new SelectQueryBuilder(qb);
       const nodes = await (isRaw ? query.getRawMany() : query.getMany()).then(
         (nodes) => {
-          if (nodes.length > take) {
+          if (take && nodes.length > take) {
             hasPrevPage = true;
           }
           return nodes.slice(0, take).reverse();
@@ -129,10 +113,10 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
     }
 
     let hasNextPage = false;
-    const query = new SelectQueryBuilder(qb).take(take + 1);
+    const query = take ? new SelectQueryBuilder(qb).take(take + 1) : new SelectQueryBuilder(qb);
     const nodes = await (isRaw ? query.getRawMany() : query.getMany()).then(
       (nodes) => {
-        if (nodes.length > take) {
+        if (take && nodes.length > take) {
           hasNextPage = true;
         }
         return nodes.slice(0, take);

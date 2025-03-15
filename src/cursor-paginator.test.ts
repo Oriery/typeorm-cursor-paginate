@@ -64,6 +64,7 @@ class User {
   @Column({
     type: "datetime",
     name: "created_at",
+    // TODO: seems that this transformer actually does nothing
     transformer: {
       from: timestampTransformFrom,
       to: timestampTransformTo,
@@ -137,10 +138,11 @@ describe("testsuite of cursor-paginator", () => {
       orderBy: {
         id: "DESC",
       },
-      take: 3,
     });
 
-    const pagination = await paginator.paginate(repoUsers.createQueryBuilder());
+    const pagination = await paginator.paginate(repoUsers.createQueryBuilder(), {
+      take: 3,
+    });
     expect(pagination).toEqual({
       totalCount: 6,
       nodes: [nodes[5], nodes[4], nodes[3]],
@@ -152,7 +154,7 @@ describe("testsuite of cursor-paginator", () => {
 
     const paginationPrev = await paginator.paginate(
       repoUsers.createQueryBuilder(),
-      { prevPageCursor: pagination.prevPageCursor },
+      { prevPageCursor: pagination.prevPageCursor, take: 3 },
     );
     expect(paginationPrev).toEqual({
       totalCount: 6,
@@ -165,7 +167,7 @@ describe("testsuite of cursor-paginator", () => {
 
     const paginationNext = await paginator.paginate(
       repoUsers.createQueryBuilder(),
-      { nextPageCursor: pagination.nextPageCursor },
+      { nextPageCursor: pagination.nextPageCursor, take: 3 },
     );
     expect(paginationNext).toEqual({
       totalCount: 6,
@@ -178,7 +180,7 @@ describe("testsuite of cursor-paginator", () => {
 
     const paginationNextPrev = await paginator.paginate(
       repoUsers.createQueryBuilder(),
-      { prevPageCursor: paginationNext.prevPageCursor },
+      { prevPageCursor: paginationNext.prevPageCursor, take: 3 },
     );
     expect(paginationNextPrev).toEqual({
       totalCount: 6,
@@ -191,7 +193,7 @@ describe("testsuite of cursor-paginator", () => {
 
     const paginationNextNext = await paginator.paginate(
       repoUsers.createQueryBuilder(),
-      { nextPageCursor: paginationNext.nextPageCursor },
+      { nextPageCursor: paginationNext.nextPageCursor, take: 3 },
     );
     expect(paginationNextNext).toEqual({
       totalCount: 6,
@@ -304,10 +306,11 @@ describe("testsuite of cursor-paginator", () => {
       orderBy: {
         createdAt: "DESC",
       },
-      take: 3,
     });
 
-    const pagination = await paginator.paginate(repoUsers.createQueryBuilder());
+    const pagination = await paginator.paginate(repoUsers.createQueryBuilder(), {
+      take: 3,
+    });
     expect(pagination).toEqual({
       totalCount: 6,
       nodes: [nodes[2], nodes[4], nodes[1]],
@@ -319,7 +322,7 @@ describe("testsuite of cursor-paginator", () => {
 
     const paginationPrev = await paginator.paginate(
       repoUsers.createQueryBuilder(),
-      { prevPageCursor: pagination.prevPageCursor },
+      { prevPageCursor: pagination.prevPageCursor, take: 3 },
     );
     expect(paginationPrev).toEqual({
       totalCount: 6,
@@ -332,7 +335,7 @@ describe("testsuite of cursor-paginator", () => {
 
     const paginationNext = await paginator.paginate(
       repoUsers.createQueryBuilder(),
-      { nextPageCursor: pagination.nextPageCursor },
+      { nextPageCursor: pagination.nextPageCursor, take: 3 },
     );
     expect(paginationNext).toEqual({
       totalCount: 6,
@@ -345,7 +348,7 @@ describe("testsuite of cursor-paginator", () => {
 
     const paginationNextPrev = await paginator.paginate(
       repoUsers.createQueryBuilder(),
-      { prevPageCursor: paginationNext.prevPageCursor },
+      { prevPageCursor: paginationNext.prevPageCursor, take: 3 },
     );
     expect(paginationNextPrev).toEqual({
       totalCount: 6,
@@ -358,7 +361,7 @@ describe("testsuite of cursor-paginator", () => {
 
     const paginationNextNext = await paginator.paginate(
       repoUsers.createQueryBuilder(),
-      { nextPageCursor: paginationNext.nextPageCursor },
+      { nextPageCursor: paginationNext.nextPageCursor, take: 3 },
     );
     expect(paginationNextNext).toEqual({
       totalCount: 6,
