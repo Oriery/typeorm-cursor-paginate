@@ -1,5 +1,6 @@
 import {
   Column,
+  // TODO don't use deprecated stuff (Connection, createConnection)
   Connection,
   createConnection,
   Entity,
@@ -16,16 +17,7 @@ function timestampTransformFrom(value: any): any {
       timestampTransformFrom((value as any)._value),
     );
   }
-  if (typeof value === "function") {
-    return value;
-  }
-  if (typeof value === "undefined") {
-    return;
-  }
-  if (value === null) {
-    return null;
-  }
-  if (typeof value === "number") {
+  if (typeof value === "function" || typeof value === "undefined" || value === null || typeof value === "number") {
     return value;
   }
   return ~~(new Date(value).getTime() / 1000);
@@ -64,7 +56,7 @@ class User {
   @Column({
     type: "datetime",
     name: "created_at",
-    // TODO: seems that this transformer actually does nothing
+    // checking that this transformer works is not about checking CursorPaginator's transformer
     transformer: {
       from: timestampTransformFrom,
       to: timestampTransformTo,
@@ -288,7 +280,7 @@ describe("testsuite of cursor-paginator", () => {
     });
   });
 
-  it("test cursor paginate with transformer", async () => {
+  it("test cursor paginate with TypeORM's transformer for field", async () => {
     const repoUsers = connection.getRepository(User);
 
     const nodes = [
