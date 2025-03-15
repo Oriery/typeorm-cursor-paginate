@@ -1,54 +1,54 @@
-import { ObjectLiteral } from "typeorm"
+import { ObjectLiteral } from "typeorm";
 
 export type Nullable<T> = {
-  [P in keyof T]?: T[P] | null
-}
+  [P in keyof T]?: T[P] | null;
+};
 
 export interface Take {
-  default: number
-  min: number
-  max: number
+  default: number;
+  min: number;
+  max: number;
 }
 
 export type OrderBy<TEntity extends ObjectLiteral> = {
-  [TKey in keyof TEntity]?: boolean
-}
+  [TKey in keyof TEntity]?: boolean;
+};
 
 export type Cursor<TEntity extends ObjectLiteral> = {
-  [TKey in keyof TEntity]?: any
-}
+  [TKey in keyof TEntity]?: any;
+};
 
 export interface CursorPagination<TEntity extends ObjectLiteral> {
-  readonly count: number
-  readonly nodes: TEntity[]
-  readonly hasPrev: boolean
-  readonly hasNext: boolean
-  readonly prevCursor: string | null
-  readonly nextCursor: string | null
+  readonly count: number;
+  readonly nodes: TEntity[];
+  readonly hasPrev: boolean;
+  readonly hasNext: boolean;
+  readonly prevCursor: string | null;
+  readonly nextCursor: string | null;
 }
 
 export interface PromiseCursorPagination<TEntity extends ObjectLiteral> {
-  readonly count: Promise<number>
-  readonly nodes: Promise<TEntity[]>
-  readonly hasPrev: Promise<boolean>
-  readonly hasNext: Promise<boolean>
-  readonly prevCursor: Promise<string | null>
-  readonly nextCursor: Promise<string | null>
+  readonly count: Promise<number>;
+  readonly nodes: Promise<TEntity[]>;
+  readonly hasPrev: Promise<boolean>;
+  readonly hasNext: Promise<boolean>;
+  readonly prevCursor: Promise<string | null>;
+  readonly nextCursor: Promise<string | null>;
 }
 
 export interface CursorTransformer<TEntity extends ObjectLiteral> {
-  parse(text: string): Cursor<TEntity>
-  stringify(cursor: Cursor<TEntity>): string
+  parse(text: string): Cursor<TEntity>;
+  stringify(cursor: Cursor<TEntity>): string;
 }
 
 export interface PagePagination<TEntity extends ObjectLiteral> {
-  readonly count: number
-  readonly nodes: TEntity[]
-  readonly hasNext: boolean
+  readonly count: number;
+  readonly nodes: TEntity[];
+  readonly hasNext: boolean;
 }
 
 export interface PromisePagePagination<TEntity extends ObjectLiteral> {
-  readonly count: Promise<number>
-  readonly nodes: Promise<TEntity[]>
-  readonly hasNext: Promise<boolean>
+  readonly count: Promise<number>;
+  readonly nodes: Promise<TEntity[]>;
+  readonly hasNext: Promise<boolean>;
 }
