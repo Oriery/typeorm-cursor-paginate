@@ -33,15 +33,15 @@ export interface CursorPaginatorPaginateParams {
 }
 
 export class CursorPaginator<TEntity extends ObjectLiteral> {
-  orders: [string, boolean][] = [];
-  transformer: CursorTransformer<TEntity>;
+  private _orders: [string, boolean][] = [];
+  private _transformer: CursorTransformer<TEntity>;
 
   constructor(
     public entity: ObjectType<TEntity>,
     { orderBy, transformer }: CursorPaginatorParams<TEntity>,
   ) {
-    this.orders = normalizeOrderBy(orderBy);
-    this.transformer = transformer ?? new Base64Transformer();
+    this._orders = normalizeOrderBy(orderBy);
+    this._transformer = transformer ?? new Base64Transformer();
   }
 
   async paginate(
@@ -58,13 +58,13 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
       try {
         this._applyWhereQuery(
           qb,
-          this.transformer.parse(params.prevPageCursor),
+          this._parseCursor(params.prevPageCursor),
           false,
         );
       } catch { // TODO what is this?
         qb.andWhere("1 = 0");
       }
-      for (const [key, value] of this.orders) {
+      for (const [key, value] of this._orders) {
         qb.addOrderBy(`${qb.alias}.${key}`, value ? "DESC" : "ASC");
       }
 
@@ -86,11 +86,11 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
         hasNextPage: true,
         prevPageCursor:
           nodes.length > 0
-            ? this.transformer.stringify(this._createCursor(nodes[0]))
+            ? this._stringifyCursor(this._createCursor(nodes[0]))
             : null,
         nextPageCursor:
           nodes.length > 0
-            ? this.transformer.stringify(
+            ? this._stringifyCursor(
                 this._createCursor(nodes[nodes.length - 1]),
               )
             : null,
@@ -101,14 +101,14 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
       try {
         this._applyWhereQuery(
           qb,
-          this.transformer.parse(params.nextPageCursor),
+          this._parseCursor(params.nextPageCursor),
           true,
         );
       } catch {
         qb.andWhere("1 = 0");
       }
     }
-    for (const [key, value] of this.orders) {
+    for (const [key, value] of this._orders) {
       qb.addOrderBy(`${qb.alias}.${key}`, value ? "ASC" : "DESC");
     }
 
@@ -130,11 +130,11 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
       hasNextPage,
       prevPageCursor:
         nodes.length > 0
-          ? this.transformer.stringify(this._createCursor(nodes[0]))
+          ? this._stringifyCursor(this._createCursor(nodes[0]))
           : null,
       nextPageCursor:
         nodes.length > 0
-          ? this.transformer.stringify(
+          ? this._stringifyCursor(
               this._createCursor(nodes[nodes.length - 1]),
             )
           : null,
@@ -156,7 +156,7 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
     const queryParts = [] as string[];
     const queryParams = {} as Record<string, any>;
 
-    for (const [key, asc] of this.orders) {
+    for (const [key, asc] of this._orders) {
       const columnName = `${qb.alias}.${key}`;
       queryParts.push(
         `(${queryPrefix}${columnName} ${asc === isNext ? ">" : "<"} :cursor__${key})`,
@@ -177,9 +177,21 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
 
   private _createCursor(node: TEntity): Cursor<TEntity> {
     const cursor = {} as Cursor<TEntity>;
-    for (const [key, _] of this.orders) {
+    for (const [key, _] of this._orders) {
       cursor[key as keyof TEntity] = node[key as keyof TEntity];
     }
     return cursor;
+  }
+
+  private _stringifyCursor(
+    cursor: Cursor<TEntity>,
+  ): string {
+    return this._transformer.stringify(cursor);
+  }
+
+  private _parseCursor(
+    cursorString: string,
+  ): Cursor<TEntity> {
+    return this._transformer.parse(cursorString);
   }
 }
