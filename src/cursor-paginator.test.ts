@@ -364,4 +364,150 @@ describe("testsuite of cursor-paginator", () => {
       nextPageCursor: null,
     });
   });
+
+  it("not enough items for full page", async () => {
+    const repoUsers = connection.getRepository(User);
+
+    const nodes = [
+      repoUsers.create({ name: "a", createdAt: 1600000000 }),
+      repoUsers.create({ name: "b", createdAt: 1600000001 }),
+    ];
+
+    await repoUsers.save(nodes);
+
+    const paginator = new CursorPaginator(User, {
+      orderBy: {
+        createdAt: "ASC",
+      },
+    });
+
+    const pagination = await paginator.paginate(repoUsers.createQueryBuilder(), {
+      limit: 3,
+    });
+    expect(pagination).toEqual({
+      totalCount: 2,
+      nodes: [nodes[0], nodes[1]],
+      hasPrevPage: false,
+      hasNextPage: false,
+      prevPageCursor: expect.any(String),
+      nextPageCursor: expect.any(String),
+    });
+  });
+
+  it("test SQL injection into cursor: test 'id'", async () => {
+    const repoUsers = connection.getRepository(User);
+
+    const nodes = [
+      repoUsers.create({ name: "a", createdAt: 1600000000 }),
+      repoUsers.create({ name: "b", createdAt: 1600000001 }),
+      repoUsers.create({ name: "b", createdAt: 1600000002 }),
+      repoUsers.create({ name: "c", createdAt: 1600000003 }),
+      repoUsers.create({ name: "c", createdAt: 1600000004 }),
+      repoUsers.create({ name: "c", createdAt: 1600000005 }),
+    ];
+
+    await repoUsers.save(nodes);
+
+    const paginator = new CursorPaginator(User, {
+      orderBy: {
+        id: "ASC",
+      },
+    });
+
+    const pagination = await paginator.paginate(repoUsers.createQueryBuilder(), {
+      limit: 3,
+      pageCursor: // {"id":"\";;;;;;DROP TABLE Users;\""}
+        "next:eyJpZCI6IlwiOzs7Ozs7RFJPUCBUQUJMRSBVc2VycztcIiJ9",
+    });
+    // should not have dropped the table
+    const pagination2 = await paginator.paginate(repoUsers.createQueryBuilder(), {
+      limit: 1,
+    });
+    expect(pagination2).toEqual({
+      totalCount: 6,
+      nodes: [nodes[0]],
+      hasPrevPage: false,
+      hasNextPage: true,
+      prevPageCursor: expect.any(String),
+      nextPageCursor: expect.any(String),
+    });
+  });
+
+  it("test SQL injection into cursor: test 'name'", async () => {
+    const repoUsers = connection.getRepository(User);
+
+    const nodes = [
+      repoUsers.create({ name: "a", createdAt: 1600000000 }),
+      repoUsers.create({ name: "b", createdAt: 1600000001 }),
+      repoUsers.create({ name: "b", createdAt: 1600000002 }),
+      repoUsers.create({ name: "c", createdAt: 1600000003 }),
+      repoUsers.create({ name: "c", createdAt: 1600000004 }),
+      repoUsers.create({ name: "c", createdAt: 1600000005 }),
+    ];
+
+    await repoUsers.save(nodes);
+
+    const paginator = new CursorPaginator(User, {
+      orderBy: {
+        name: "ASC",
+      },
+    });
+
+    const pagination = await paginator.paginate(repoUsers.createQueryBuilder(), {
+      limit: 3,
+      pageCursor: // {"name":"\";;;;;;DROP TABLE Users;\""}
+        "next:eyJuYW1lIjoiXCI7Ozs7OztEUk9QIFRBQkxFIFVzZXJzO1wiIn0=",
+    });
+    // should not have dropped the table
+    const pagination2 = await paginator.paginate(repoUsers.createQueryBuilder(), {
+      limit: 1,
+    });
+    expect(pagination2).toEqual({
+      totalCount: 6,
+      nodes: [nodes[0]],
+      hasPrevPage: false,
+      hasNextPage: true,
+      prevPageCursor: expect.any(String),
+      nextPageCursor: expect.any(String),
+    });
+  });
+
+  it("test SQL injection into cursor: test 'name' without extra quotes", async () => {
+    const repoUsers = connection.getRepository(User);
+
+    const nodes = [
+      repoUsers.create({ name: "a", createdAt: 1600000000 }),
+      repoUsers.create({ name: "b", createdAt: 1600000001 }),
+      repoUsers.create({ name: "b", createdAt: 1600000002 }),
+      repoUsers.create({ name: "c", createdAt: 1600000003 }),
+      repoUsers.create({ name: "c", createdAt: 1600000004 }),
+      repoUsers.create({ name: "c", createdAt: 1600000005 }),
+    ];
+
+    await repoUsers.save(nodes);
+
+    const paginator = new CursorPaginator(User, {
+      orderBy: {
+        name: "ASC",
+      },
+    });
+
+    const pagination = await paginator.paginate(repoUsers.createQueryBuilder(), {
+      limit: 3,
+      pageCursor: // {"name":";;;;;;DROP TABLE Users;"}
+        "next:eyJuYW1lIjoiOzs7Ozs7RFJPUCBUQUJMRSBVc2VyczsifQ==",
+    });
+    // should not have dropped the table
+    const pagination2 = await paginator.paginate(repoUsers.createQueryBuilder(), {
+      limit: 1,
+    });
+    expect(pagination2).toEqual({
+      totalCount: 6,
+      nodes: [nodes[0]],
+      hasPrevPage: false,
+      hasNextPage: true,
+      prevPageCursor: expect.any(String),
+      nextPageCursor: expect.any(String),
+    });
+  });
 });
