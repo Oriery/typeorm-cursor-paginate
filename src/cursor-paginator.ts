@@ -20,7 +20,7 @@ export interface CursorPaginatorParams<TEntity extends ObjectLiteral> {
   /**
    * columns to order by.
    * Caution: the set of provided columns must be unique in database,
-   *  otherwise entries might be skipped/duplicated. 
+   *  otherwise entries might be skipped/duplicated.
    */
   orderBy: OrderBy<TEntity> | OrderBy<TEntity>[];
   transformer?: CursorTransformer<TEntity> | null;
@@ -38,7 +38,7 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
 
   constructor(
     public entity: ObjectType<TEntity>,
-    { orderBy, transformer }: CursorPaginatorParams<TEntity>,
+    { orderBy, transformer }: CursorPaginatorParams<TEntity>
   ) {
     this._orders = normalizeOrderBy(orderBy);
     this._transformer = transformer ?? new Base64Transformer();
@@ -47,88 +47,83 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
   async paginate(
     qb: SelectQueryBuilder<TEntity>,
     params: CursorPaginatorPaginateParams = {},
-    isRaw = false,
+    isRaw = false
   ): Promise<CursorPagination<TEntity>> {
+    // TODO move what is possible to the constructor
+    // (getting metadata, etc.)
+
     const take = params.limit;
 
+    // a copy of the query builder without "limit", "where" and "order by"
+    // will be used to get the total count
     const qbForCount = new SelectQueryBuilder(qb);
+    
+    const directionIsProvided =
+      !!params.nextPageCursor || !!params.prevPageCursor;
+    if (!!params.nextPageCursor && !!params.prevPageCursor) {
+      throw new Error(
+        "Both nextPageCursor and prevPageCursor were provided which is forbidden."
+      );
+    }
+    // directionIsNext is true if nextPageCursor is provided or if no cursor is provided
+    const directionIsNext = !!params.nextPageCursor || !directionIsProvided;
+    let workingCursor: string | null = null;
+    if (directionIsNext) {
+      workingCursor = params.nextPageCursor ?? null;
+    } else {
+      workingCursor = params.prevPageCursor ?? null;
+    }
 
-    // TODO combine implementations for 2 directions
-    if (params.prevPageCursor) {
+    if (workingCursor) {
       this._applyWhereQuery(
         qb,
-        this._parseCursor(params.prevPageCursor),
-        false,
-      );
-      for (const [key, value] of this._orders) {
-        qb.addOrderBy(`${qb.alias}.${key}`, value ? "DESC" : "ASC");
-      }
-
-      let hasPrevPage = false;
-      const query = take ? new SelectQueryBuilder(qb).take(take + 1) : new SelectQueryBuilder(qb);
-      const nodes = await (isRaw ? query.getRawMany() : query.getMany()).then(
-        (nodes) => {
-          if (take && nodes.length > take) {
-            hasPrevPage = true;
-          }
-          return nodes.slice(0, take).reverse();
-        },
-      );
-
-      return {
-        totalCount: await qbForCount.getCount(),
-        nodes,
-        hasPrevPage,
-        hasNextPage: true,
-        prevPageCursor:
-          nodes.length > 0
-            ? this._stringifyCursor(this._createCursor(nodes[0]))
-            : null,
-        nextPageCursor:
-          nodes.length > 0
-            ? this._stringifyCursor(
-                this._createCursor(nodes[nodes.length - 1]),
-              )
-            : null,
-      };
-    }
-
-    if (params.nextPageCursor) {
-      this._applyWhereQuery(
-        qb,
-        this._parseCursor(params.nextPageCursor),
-        true,
+        this._parseCursor(workingCursor),
+        directionIsNext
       );
     }
-    for (const [key, value] of this._orders) {
-      qb.addOrderBy(`${qb.alias}.${key}`, value ? "ASC" : "DESC");
+    for (const [key, asc] of this._orders) {
+      qb.addOrderBy(
+        `${qb.alias}.${key}`,
+        asc === directionIsNext ? "ASC" : "DESC"
+      );
     }
 
-    let hasNextPage = false;
-    const query = take ? new SelectQueryBuilder(qb).take(take + 1) : new SelectQueryBuilder(qb);
-    const nodes = await (isRaw ? query.getRawMany() : query.getMany()).then(
-      (nodes) => {
-        if (take && nodes.length > take) {
-          hasNextPage = true;
-        }
-        return nodes.slice(0, take);
-      },
-    );
+    let hasPageInThePrimaryDirection = false;
+    const query = take
+      ? new SelectQueryBuilder<TEntity>(qb).take(take + 1)
+      : new SelectQueryBuilder<TEntity>(qb);
+    let [nodes, totalCount] = await Promise.all([
+      isRaw ? query.getRawMany<TEntity>() : query.getMany(),
+      qbForCount.getCount(),
+    ]);
+
+    if (take && nodes.length > take) {
+      hasPageInThePrimaryDirection = true;
+    }
+
+    nodes = nodes.slice(0, take);
+    if (!directionIsNext) {
+      nodes.reverse();
+    }
 
     return {
-      totalCount: await qbForCount.getCount(),
+      totalCount,
       nodes: nodes.slice(0, take),
-      hasPrevPage: !!params.nextPageCursor,
-      hasNextPage,
+      hasPrevPage: directionIsNext
+        // if a cursor was provided, assume that there is a page in the direction we came from
+        // TODO: fix that, do not assume
+        ? (directionIsProvided && !!workingCursor)
+        : hasPageInThePrimaryDirection,
+      hasNextPage: directionIsNext
+        ? hasPageInThePrimaryDirection
+        : (directionIsProvided && !!workingCursor),
       prevPageCursor:
         nodes.length > 0
           ? this._stringifyCursor(this._createCursor(nodes[0]))
           : null,
       nextPageCursor:
         nodes.length > 0
-          ? this._stringifyCursor(
-              this._createCursor(nodes[nodes.length - 1]),
-            )
+          ? this._stringifyCursor(this._createCursor(nodes[nodes.length - 1]))
           : null,
     };
   }
@@ -136,7 +131,7 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
   private _applyWhereQuery(
     qb: SelectQueryBuilder<TEntity>,
     cursor: Cursor<TEntity>,
-    isNext: boolean,
+    isNext: boolean
   ) {
     const metadata = qb.expressionMap.mainAlias?.metadata;
 
@@ -151,7 +146,7 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
     for (const [key, asc] of this._orders) {
       const columnName = `${qb.alias}.${key}`;
       queryParts.push(
-        `(${queryPrefix}${columnName} ${asc === isNext ? ">" : "<"} :cursor__${key})`,
+        `(${queryPrefix}${columnName} ${asc === isNext ? ">" : "<"} :cursor__${key})`
       );
       queryPrefix += `${columnName} = :cursor__${key} AND `;
 
@@ -159,7 +154,7 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
       queryParams[`cursor__${key}`] = column
         ? qb.connection.driver.preparePersistentValue(
             cursor[key as keyof TEntity],
-            column,
+            column
           )
         : cursor[key as keyof TEntity];
     }
@@ -175,15 +170,11 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
     return cursor;
   }
 
-  private _stringifyCursor(
-    cursor: Cursor<TEntity>,
-  ): string {
+  private _stringifyCursor(cursor: Cursor<TEntity>): string {
     return this._transformer.stringify(cursor);
   }
 
-  private _parseCursor(
-    cursorString: string,
-  ): Cursor<TEntity> {
+  private _parseCursor(cursorString: string): Cursor<TEntity> {
     return this._transformer.parse(cursorString);
   }
 }

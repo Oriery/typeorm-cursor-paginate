@@ -81,7 +81,7 @@ describe("testsuite of cursor-paginator", () => {
     await connection.getRepository(User).clear();
   });
 
-  it("test paginate default", async () => {
+  it("test paginate default (no limit)", async () => {
     const repoUsers = connection.getRepository(User);
 
     const nodes = [
