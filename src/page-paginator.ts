@@ -44,17 +44,17 @@ export class PagePaginator<TEntity, TColumnNames extends Record<string, string>>
 
   async paginate(qb: SelectQueryBuilder<TEntity>, params: PagePaginatorPaginateParams<TEntity, TColumnNames> = {}, isRaw = false): Promise<PagePagination<TEntity>> {
     const page = Math.max(params.page ?? 1, 1)
-    const take = Math.max(this.takeOptions.min, Math.min(params.take || this.takeOptions.default, this.takeOptions.max))
+    const take = Math.max(this.takeOptions.min, Math.min(params.take ?? this.takeOptions.default, this.takeOptions.max))
 
     const qbForCount = qb.clone()
 
     for (const [key, value] of normalizeOrderBy(params.orderBy ?? this.orderBy)) {
-      qb.addOrderBy(this.columnNames[key] ?? `${qb.alias}.${key}`, value ? 'ASC' : 'DESC')
+      qb.addOrderBy(this.columnNames[key] || `${qb.alias}.${key}`, value ? 'ASC' : 'DESC')
     }
 
     let hasNext = false
     const query = qb.clone().offset((page - 1) * take).limit(take + 1)
-    const nodes = await (isRaw? query.getRawMany() : query.getMany()).then(nodes => {
+    const nodes = await (isRaw ? query.getRawMany() : query.getMany()).then(nodes => {
       if (nodes.length > take) {
         hasNext = true
       }
@@ -70,19 +70,19 @@ export class PagePaginator<TEntity, TColumnNames extends Record<string, string>>
 
   promisePaginate(qb: SelectQueryBuilder<TEntity>, params: PagePaginatorPaginateParams<TEntity, TColumnNames> = {}, isRaw = false): PromisePagePagination<TEntity> {
     const page = Math.max(params.page ?? 1, 1)
-    const take = Math.max(this.takeOptions.min, Math.min(params.take || this.takeOptions.default, this.takeOptions.max))
+    const take = Math.max(this.takeOptions.min, Math.min(params.take ?? this.takeOptions.default, this.takeOptions.max))
 
     const qbForCount = qb.clone()
 
     for (const [key, value] of normalizeOrderBy(params.orderBy ?? this.orderBy)) {
-      qb.addOrderBy(this.columnNames[key] ?? `${qb.alias}.${key}`, value ? 'ASC' : 'DESC')
+      qb.addOrderBy(this.columnNames[key] || `${qb.alias}.${key}`, value ? 'ASC' : 'DESC')
     }
 
     let cachePromiseNodes = null as Promise<Omit<PagePagination<any>, 'count'>> | null
     const promiseNodes = () => {
       if (!cachePromiseNodes) {
         const query = qb.clone().offset((page - 1) * take).limit(take + 1)
-        cachePromiseNodes = (isRaw? query.getRawMany() : query.getMany()).then(nodes => {
+        cachePromiseNodes = (isRaw ? query.getRawMany() : query.getMany()).then(nodes => {
           let hasNext = false
           if (nodes.length > take) {
             hasNext = true

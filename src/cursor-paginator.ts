@@ -49,7 +49,7 @@ export class CursorPaginator<TEntity, TColumnNames extends Record<string, string
   }
 
   async paginate(qb: SelectQueryBuilder<TEntity>, params: CursorPaginatorPaginateParams = {}, isRaw = false): Promise<CursorPagination<TEntity>> {
-    const take = Math.max(this.takeOptions.min, Math.min(params.take || this.takeOptions.default, this.takeOptions.max))
+    const take = Math.max(this.takeOptions.min, Math.min(params.take ?? this.takeOptions.default, this.takeOptions.max))
 
     const qbForCount = qb.clone()
 
@@ -60,12 +60,12 @@ export class CursorPaginator<TEntity, TColumnNames extends Record<string, string
         qb.andWhere('1 = 0')
       }
       for (const [key, value] of this.orders) {
-        qb.addOrderBy(this.columnNames[key] ?? `${qb.alias}.${key}`, value ? 'DESC' : 'ASC')
+        qb.addOrderBy(this.columnNames[key] || `${qb.alias}.${key}`, value ? 'DESC' : 'ASC')
       }
 
       let hasPrev = false
       const query = qb.clone().take(take + 1)
-      const nodes = await (isRaw? query.getRawMany() : query.getMany()).then(nodes => {
+      const nodes = await (isRaw ? query.getRawMany() : query.getMany()).then(nodes => {
         if (nodes.length > take) {
           hasPrev = true
         }
@@ -90,12 +90,12 @@ export class CursorPaginator<TEntity, TColumnNames extends Record<string, string
       }
     }
     for (const [key, value] of this.orders) {
-      qb.addOrderBy(this.columnNames[key] ?? `${qb.alias}.${key}`, value ? 'ASC' : 'DESC')
+      qb.addOrderBy(this.columnNames[key] || `${qb.alias}.${key}`, value ? 'ASC' : 'DESC')
     }
 
     let hasNext = false
     const query = qb.clone().take(take + 1)
-    const nodes = await (isRaw? query.getRawMany() : query.getMany()).then(nodes => {
+    const nodes = await (isRaw ? query.getRawMany() : query.getMany()).then(nodes => {
       if (nodes.length > take) {
         hasNext = true
       }
@@ -113,7 +113,7 @@ export class CursorPaginator<TEntity, TColumnNames extends Record<string, string
   }
 
   promisePaginate(qb: SelectQueryBuilder<TEntity>, params: CursorPaginatorPaginateParams = {}, isRaw = false): PromiseCursorPagination<TEntity> {
-    const take = Math.max(this.takeOptions.min, Math.min(params.take || this.takeOptions.default, this.takeOptions.max))
+    const take = Math.max(this.takeOptions.min, Math.min(params.take ?? this.takeOptions.default, this.takeOptions.max))
 
     const qbForCount = qb.clone()
 
@@ -124,14 +124,14 @@ export class CursorPaginator<TEntity, TColumnNames extends Record<string, string
         qb.andWhere('1 = 0')
       }
       for (const [key, value] of this.orders) {
-        qb.addOrderBy(this.columnNames[key] ?? `${qb.alias}.${key}`, value ? 'DESC' : 'ASC')
+        qb.addOrderBy(this.columnNames[key] || `${qb.alias}.${key}`, value ? 'DESC' : 'ASC')
       }
 
       let cachePromiseNodes = null as Promise<Omit<CursorPagination<any>, 'count'>> | null
       const promiseNodes = () => {
         if (!cachePromiseNodes) {
           const query = qb.clone().take(take + 1)
-          cachePromiseNodes = (isRaw? query.getRawMany() : query.getMany()).then(nodes => {
+          cachePromiseNodes = (isRaw ? query.getRawMany() : query.getMany()).then(nodes => {
             let hasPrev = false
             if (nodes.length > take) {
               hasPrev = true
@@ -179,14 +179,14 @@ export class CursorPaginator<TEntity, TColumnNames extends Record<string, string
       }
     }
     for (const [key, value] of this.orders) {
-      qb.addOrderBy(this.columnNames[key] ?? `${qb.alias}.${key}`, value ? 'ASC' : 'DESC')
+      qb.addOrderBy(this.columnNames[key] || `${qb.alias}.${key}`, value ? 'ASC' : 'DESC')
     }
 
     let cachePromiseNodes = null as Promise<Omit<CursorPagination<any>, 'count'>> | null
     const promiseNodes = () => {
       if (!cachePromiseNodes) {
         const query = qb.clone().take(take + 1)
-        cachePromiseNodes = (isRaw? query.getRawMany() : query.getMany()).then(nodes => {
+        cachePromiseNodes = (isRaw ? query.getRawMany() : query.getMany()).then(nodes => {
           let hasNext = false
           if (nodes.length > take) {
             hasNext = true
@@ -227,14 +227,18 @@ export class CursorPaginator<TEntity, TColumnNames extends Record<string, string
   }
 
   _applyWhereQuery(qb: SelectQueryBuilder<TEntity>, cursor: Cursor<TEntity>, isNext: boolean) {
-    const metadata = qb.expressionMap.mainAlias!.metadata
+    const metadata = qb.expressionMap.mainAlias?.metadata
+
+    if (!metadata) {
+      throw new Error('Metadata is not defined')
+    }
 
     let queryPrefix = ''
     const queryParts = [] as string[]
     const queryParams = {} as Record<string, any>
 
     for (const [key, asc] of this.orders) {
-      const columnName = this.columnNames[key] ?? `${qb.alias}.${key}`
+      const columnName = this.columnNames[key] || `${qb.alias}.${key}`
       queryParts.push(`(${queryPrefix}${columnName} ${!asc !== isNext ? '>' : '<'} :cursor__${key})`)
       queryPrefix = `${queryPrefix}${columnName} = :cursor__${key} AND `
 
