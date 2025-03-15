@@ -128,7 +128,7 @@ describe("testsuite of cursor-paginator", () => {
 
     const paginator = new CursorPaginator(User, {
       orderBy: {
-        id: 'DESC',
+        id: "DESC",
       },
     });
 
@@ -159,7 +159,7 @@ describe("testsuite of cursor-paginator", () => {
 
     const paginator = new CursorPaginator(User, {
       orderBy: {
-        id: 'DESC',
+        id: "DESC",
       },
       take: 3,
     });
@@ -242,7 +242,7 @@ describe("testsuite of cursor-paginator", () => {
     await repoUsers.save(nodes);
 
     const paginator = new CursorPaginator(User, {
-      orderBy: [{ name: 'ASC' }, { id: 'DESC' }],
+      orderBy: [{ name: "ASC" }, { id: "DESC" }],
     });
 
     const pagination1 = await paginator.paginate(
@@ -326,7 +326,7 @@ describe("testsuite of cursor-paginator", () => {
 
     const paginator = new CursorPaginator(User, {
       orderBy: {
-        createdAt: 'DESC',
+        createdAt: "DESC",
       },
       take: 3,
     });
@@ -410,7 +410,7 @@ describe("testsuite of cursor-paginator", () => {
 
     const paginator = new CursorPaginator(User, {
       orderBy: {
-        id: 'DESC',
+        id: "DESC",
       },
     });
 
@@ -443,7 +443,7 @@ describe("testsuite of cursor-paginator", () => {
 
     const paginator = new CursorPaginator(User, {
       orderBy: {
-        id: 'DESC',
+        id: "DESC",
       },
       take: 3,
     });
@@ -533,7 +533,7 @@ describe("testsuite of cursor-paginator", () => {
     await repoUsers.save(nodes);
 
     const paginator = new CursorPaginator(User, {
-      orderBy: [{ name: 'ASC' }, { id: 'DESC' }],
+      orderBy: [{ name: "ASC" }, { id: "DESC" }],
     });
 
     const pagination1 = await testPromisePaginationAndResolve(
@@ -622,7 +622,7 @@ describe("testsuite of cursor-paginator", () => {
 
     const paginator = new CursorPaginator(User, {
       orderBy: {
-        createdAt: 'DESC',
+        createdAt: "DESC",
       },
       take: 3,
     });
