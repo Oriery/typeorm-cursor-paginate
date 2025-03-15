@@ -54,7 +54,7 @@ export class PagePaginator<TEntity extends ObjectLiteral> {
       Math.min(params.take ?? this.takeOptions.default, this.takeOptions.max),
     );
 
-    const qbForCount = qb.clone();
+    const qbForCount = new SelectQueryBuilder(qb);
 
     for (const [key, value] of normalizeOrderBy(
       params.orderBy ?? this.orderBy,
@@ -94,7 +94,7 @@ export class PagePaginator<TEntity extends ObjectLiteral> {
       Math.min(params.take ?? this.takeOptions.default, this.takeOptions.max),
     );
 
-    const qbForCount = qb.clone();
+    const qbForCount = new SelectQueryBuilder(qb);
 
     for (const [key, value] of normalizeOrderBy(
       params.orderBy ?? this.orderBy,

@@ -64,7 +64,7 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
       Math.min(params.take ?? this.takeOptions.default, this.takeOptions.max),
     );
 
-    const qbForCount = qb.clone();
+    const qbForCount = new SelectQueryBuilder(qb);
 
     if (params.prevPageCursor) {
       try {
@@ -81,7 +81,7 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
       }
 
       let hasPrevPage = false;
-      const query = qb.clone().take(take + 1);
+      const query = new SelectQueryBuilder(qb).take(take + 1);
       const nodes = await (isRaw ? query.getRawMany() : query.getMany()).then(
         (nodes) => {
           if (nodes.length > take) {
@@ -125,7 +125,7 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
     }
 
     let hasNextPage = false;
-    const query = qb.clone().take(take + 1);
+    const query = new SelectQueryBuilder(qb).take(take + 1);
     const nodes = await (isRaw ? query.getRawMany() : query.getMany()).then(
       (nodes) => {
         if (nodes.length > take) {
@@ -163,7 +163,7 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
       Math.min(params.take ?? this.takeOptions.default, this.takeOptions.max),
     );
 
-    const qbForCount = qb.clone();
+    const qbForCount = new SelectQueryBuilder(qb);
 
     if (params.prevPageCursor) {
       try {
@@ -184,7 +184,7 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
       > | null;
       const promiseNodes = () => {
         if (!cachePromiseNodes) {
-          const query = qb.clone().take(take + 1);
+          const query = new SelectQueryBuilder(qb).take(take + 1);
           cachePromiseNodes = (
             isRaw ? query.getRawMany() : query.getMany()
           ).then((nodes) => {
@@ -255,7 +255,7 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
     > | null;
     const promiseNodes = () => {
       if (!cachePromiseNodes) {
-        const query = qb.clone().take(take + 1);
+        const query = new SelectQueryBuilder(qb).take(take + 1);
         cachePromiseNodes = (isRaw ? query.getRawMany() : query.getMany()).then(
           (nodes) => {
             let hasNextPage = false;
