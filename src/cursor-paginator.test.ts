@@ -141,7 +141,7 @@ describe("testsuite of cursor-paginator", () => {
     });
 
     const pagination = await paginator.paginate(repoUsers.createQueryBuilder(), {
-      take: 3,
+      limit: 3,
     });
     expect(pagination).toEqual({
       totalCount: 6,
@@ -154,7 +154,7 @@ describe("testsuite of cursor-paginator", () => {
 
     const paginationPrev = await paginator.paginate(
       repoUsers.createQueryBuilder(),
-      { prevPageCursor: pagination.prevPageCursor, take: 3 },
+      { prevPageCursor: pagination.prevPageCursor, limit: 3 },
     );
     expect(paginationPrev).toEqual({
       totalCount: 6,
@@ -167,7 +167,7 @@ describe("testsuite of cursor-paginator", () => {
 
     const paginationNext = await paginator.paginate(
       repoUsers.createQueryBuilder(),
-      { nextPageCursor: pagination.nextPageCursor, take: 3 },
+      { nextPageCursor: pagination.nextPageCursor, limit: 3 },
     );
     expect(paginationNext).toEqual({
       totalCount: 6,
@@ -180,7 +180,7 @@ describe("testsuite of cursor-paginator", () => {
 
     const paginationNextPrev = await paginator.paginate(
       repoUsers.createQueryBuilder(),
-      { prevPageCursor: paginationNext.prevPageCursor, take: 3 },
+      { prevPageCursor: paginationNext.prevPageCursor, limit: 3 },
     );
     expect(paginationNextPrev).toEqual({
       totalCount: 6,
@@ -193,7 +193,7 @@ describe("testsuite of cursor-paginator", () => {
 
     const paginationNextNext = await paginator.paginate(
       repoUsers.createQueryBuilder(),
-      { nextPageCursor: paginationNext.nextPageCursor, take: 3 },
+      { nextPageCursor: paginationNext.nextPageCursor, limit: 3 },
     );
     expect(paginationNextNext).toEqual({
       totalCount: 6,
@@ -237,7 +237,7 @@ describe("testsuite of cursor-paginator", () => {
 
     const pagination2 = await paginator.paginate(
       repoUsers.createQueryBuilder(),
-      { take: 2 },
+      { limit: 2 },
     );
     expect(pagination2).toEqual({
       totalCount: 6,
@@ -250,7 +250,7 @@ describe("testsuite of cursor-paginator", () => {
 
     const pagination2Next = await paginator.paginate(
       repoUsers.createQueryBuilder(),
-      { take: 2, nextPageCursor: pagination2.nextPageCursor },
+      { limit: 2, nextPageCursor: pagination2.nextPageCursor },
     );
     expect(pagination2Next).toEqual({
       totalCount: 6,
@@ -263,7 +263,7 @@ describe("testsuite of cursor-paginator", () => {
 
     const pagination2NextNext = await paginator.paginate(
       repoUsers.createQueryBuilder(),
-      { take: 2, nextPageCursor: pagination2Next.nextPageCursor },
+      { limit: 2, nextPageCursor: pagination2Next.nextPageCursor },
     );
     expect(pagination2NextNext).toEqual({
       totalCount: 6,
@@ -276,7 +276,7 @@ describe("testsuite of cursor-paginator", () => {
 
     const pagination2NextNextPrev = await paginator.paginate(
       repoUsers.createQueryBuilder(),
-      { take: 2, prevPageCursor: pagination2NextNext.prevPageCursor },
+      { limit: 2, prevPageCursor: pagination2NextNext.prevPageCursor },
     );
     expect(pagination2NextNextPrev).toEqual({
       totalCount: 6,
@@ -309,7 +309,7 @@ describe("testsuite of cursor-paginator", () => {
     });
 
     const pagination = await paginator.paginate(repoUsers.createQueryBuilder(), {
-      take: 3,
+      limit: 3,
     });
     expect(pagination).toEqual({
       totalCount: 6,
@@ -322,7 +322,7 @@ describe("testsuite of cursor-paginator", () => {
 
     const paginationPrev = await paginator.paginate(
       repoUsers.createQueryBuilder(),
-      { prevPageCursor: pagination.prevPageCursor, take: 3 },
+      { prevPageCursor: pagination.prevPageCursor, limit: 3 },
     );
     expect(paginationPrev).toEqual({
       totalCount: 6,
@@ -335,7 +335,7 @@ describe("testsuite of cursor-paginator", () => {
 
     const paginationNext = await paginator.paginate(
       repoUsers.createQueryBuilder(),
-      { nextPageCursor: pagination.nextPageCursor, take: 3 },
+      { nextPageCursor: pagination.nextPageCursor, limit: 3 },
     );
     expect(paginationNext).toEqual({
       totalCount: 6,
@@ -348,7 +348,7 @@ describe("testsuite of cursor-paginator", () => {
 
     const paginationNextPrev = await paginator.paginate(
       repoUsers.createQueryBuilder(),
-      { prevPageCursor: paginationNext.prevPageCursor, take: 3 },
+      { prevPageCursor: paginationNext.prevPageCursor, limit: 3 },
     );
     expect(paginationNextPrev).toEqual({
       totalCount: 6,
@@ -361,7 +361,7 @@ describe("testsuite of cursor-paginator", () => {
 
     const paginationNextNext = await paginator.paginate(
       repoUsers.createQueryBuilder(),
-      { nextPageCursor: paginationNext.nextPageCursor, take: 3 },
+      { nextPageCursor: paginationNext.nextPageCursor, limit: 3 },
     );
     expect(paginationNextNext).toEqual({
       totalCount: 6,

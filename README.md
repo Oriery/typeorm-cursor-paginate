@@ -63,7 +63,7 @@ const paginator = new CursorPaginator(User, {
   ],
 })
 
-const result = await paginator.paginate(repoUsers.createQueryBuilder(), { take: 2 })
+const result = await paginator.paginate(repoUsers.createQueryBuilder(), { limit: 2 })
 expect(result).toEqual({
   nodes: [
     User { id: 3, name: 'a' },
@@ -75,7 +75,7 @@ expect(result).toEqual({
   nextPageCursor: expect.any(String),
 })
 
-const resultNext = await paginator.paginate(repoUsers.createQueryBuilder(), { take: 2, nextPageCursor: result.nextPageCursor })
+const resultNext = await paginator.paginate(repoUsers.createQueryBuilder(), { limit: 2, nextPageCursor: result.nextPageCursor })
 expect(resultNext).toEqual({
   nodes: [
     User { id: 2, name: 'b' },
@@ -87,7 +87,7 @@ expect(resultNext).toEqual({
   nextPageCursor: expect.any(String),
 })
 
-const resultNextNext = await paginator.paginate(repoUsers.createQueryBuilder(), { take: 2, nextPageCursor: resultNext.nextPageCursor })
+const resultNextNext = await paginator.paginate(repoUsers.createQueryBuilder(), { limit: 2, nextPageCursor: resultNext.nextPageCursor })
 expect(resultNextNext).toEqual({
   nodes: [
     User { id: 4, name: 'c' },
@@ -99,7 +99,7 @@ expect(resultNextNext).toEqual({
   nextPageCursor: expect.any(String),
 })
 
-const resultNextNextPrev = await paginator.paginate(repoUsers.createQueryBuilder(), { take: 2, prevPageCursor: resultNextNext.prevPageCursor })
+const resultNextNextPrev = await paginator.paginate(repoUsers.createQueryBuilder(), { limit: 2, prevPageCursor: resultNextNext.prevPageCursor })
 expect(resultNextNextPrev).toEqual({
   nodes: [
     User { id: 2, name: 'b' },
@@ -126,7 +126,7 @@ const paginator = new PagePaginator(User, {
   orderBy: {
     id: false,
   },
-  take: 3,
+  limit: 3,
 })
 
 const pagination1 = await paginator.paginate(repoUsers.createQueryBuilder())

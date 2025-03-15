@@ -29,7 +29,7 @@ export interface CursorPaginatorParams<TEntity extends ObjectLiteral> {
 export interface CursorPaginatorPaginateParams {
   prevPageCursor?: string | null;
   nextPageCursor?: string | null;
-  take?: number;
+  limit?: number;
 }
 
 export class CursorPaginator<TEntity extends ObjectLiteral> {
@@ -49,7 +49,7 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
     params: CursorPaginatorPaginateParams = {},
     isRaw = false,
   ): Promise<CursorPagination<TEntity>> {
-    const take = params.take;
+    const take = params.limit;
 
     const qbForCount = new SelectQueryBuilder(qb);
 
