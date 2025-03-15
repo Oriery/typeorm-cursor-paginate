@@ -17,6 +17,11 @@ import { Base64Transformer } from "./transformers/base64-transformer";
 import { normalizeOrderBy } from "./utils/normalizeOrderBy";
 
 export interface CursorPaginatorParams<TEntity extends ObjectLiteral> {
+  /**
+   * columns to order by.
+   * Caution: the set of provided columns must be unique in database,
+   *  otherwise entries might be skipped/duplicated. 
+   */
   orderBy: OrderBy<TEntity> | OrderBy<TEntity>[];
   take?: Nullable<Take> | number | null;
   transformer?: CursorTransformer<TEntity> | null;
@@ -152,7 +157,7 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
     };
   }
 
-  _applyWhereQuery(
+  private _applyWhereQuery(
     qb: SelectQueryBuilder<TEntity>,
     cursor: Cursor<TEntity>,
     isNext: boolean,
@@ -170,9 +175,9 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
     for (const [key, asc] of this.orders) {
       const columnName = `${qb.alias}.${key}`;
       queryParts.push(
-        `(${queryPrefix}${columnName} ${!asc !== isNext ? ">" : "<"} :cursor__${key})`,
+        `(${queryPrefix}${columnName} ${asc === isNext ? ">" : "<"} :cursor__${key})`,
       );
-      queryPrefix = `${queryPrefix}${columnName} = :cursor__${key} AND `;
+      queryPrefix += `${columnName} = :cursor__${key} AND `;
 
       const column = metadata.findColumnWithPropertyPath(key);
       queryParams[`cursor__${key}`] = column
@@ -186,7 +191,7 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
     qb.andWhere(`(${queryParts.join(" OR ")})`, queryParams);
   }
 
-  _createCursor(node: TEntity): Cursor<TEntity> {
+  private _createCursor(node: TEntity): Cursor<TEntity> {
     const cursor = {} as Cursor<TEntity>;
     for (const [key, _] of this.orders) {
       cursor[key as keyof TEntity] = node[key as keyof TEntity];

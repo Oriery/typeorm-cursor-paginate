@@ -8,7 +8,6 @@ import {
 } from "typeorm";
 
 import { CursorPaginator } from "./cursor-paginator";
-import { CursorPagination } from "./interfaces/paginator";
 
 function timestampTransformFrom(value: any): any {
   if (value instanceof FindOperator) {
