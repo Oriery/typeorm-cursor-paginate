@@ -55,15 +55,11 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
 
     // TODO combine implementations for 2 directions
     if (params.prevPageCursor) {
-      try {
-        this._applyWhereQuery(
-          qb,
-          this._parseCursor(params.prevPageCursor),
-          false,
-        );
-      } catch { // TODO what is this?
-        qb.andWhere("1 = 0");
-      }
+      this._applyWhereQuery(
+        qb,
+        this._parseCursor(params.prevPageCursor),
+        false,
+      );
       for (const [key, value] of this._orders) {
         qb.addOrderBy(`${qb.alias}.${key}`, value ? "DESC" : "ASC");
       }
@@ -98,15 +94,11 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
     }
 
     if (params.nextPageCursor) {
-      try {
-        this._applyWhereQuery(
-          qb,
-          this._parseCursor(params.nextPageCursor),
-          true,
-        );
-      } catch {
-        qb.andWhere("1 = 0");
-      }
+      this._applyWhereQuery(
+        qb,
+        this._parseCursor(params.nextPageCursor),
+        true,
+      );
     }
     for (const [key, value] of this._orders) {
       qb.addOrderBy(`${qb.alias}.${key}`, value ? "ASC" : "DESC");
