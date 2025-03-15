@@ -29,15 +29,6 @@ export interface CursorPagination<TEntity extends ObjectLiteral> {
   readonly nextPageCursor: string | null;
 }
 
-export interface PromiseCursorPagination<TEntity extends ObjectLiteral> {
-  readonly totalCount: Promise<number>;
-  readonly nodes: Promise<TEntity[]>;
-  readonly hasPrevPage: Promise<boolean>;
-  readonly hasNextPage: Promise<boolean>;
-  readonly prevPageCursor: Promise<string | null>;
-  readonly nextPageCursor: Promise<string | null>;
-}
-
 export interface CursorTransformer<TEntity extends ObjectLiteral> {
   parse(text: string): Cursor<TEntity>;
   stringify(cursor: Cursor<TEntity>): string;
