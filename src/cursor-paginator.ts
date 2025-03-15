@@ -89,9 +89,7 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
     }
 
     let hasPageInThePrimaryDirection = false;
-    const query = take
-      ? new SelectQueryBuilder<TEntity>(qb).take(take + 1)
-      : new SelectQueryBuilder<TEntity>(qb);
+    const query = new SelectQueryBuilder<TEntity>(qb).take(take && take + 1);
     let [nodes, totalCount] = await Promise.all([
       isRaw ? query.getRawMany<TEntity>() : query.getMany(),
       qbForCount.getCount(),
@@ -108,7 +106,7 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
 
     return {
       totalCount,
-      nodes: nodes.slice(0, take),
+      nodes,
       hasPrevPage: directionIsNext
         // if a cursor was provided, assume that there is a page in the direction we came from
         // TODO: fix that, do not assume
