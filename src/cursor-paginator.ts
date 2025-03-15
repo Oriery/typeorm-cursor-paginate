@@ -1,13 +1,12 @@
-import { SelectQueryBuilder, ObjectType, ObjectLiteral } from 'typeorm'
+import { SelectQueryBuilder, ObjectType, ObjectLiteral, KeysOfAType } from 'typeorm'
 
 import { CursorPagination, Cursor, OrderBy, CursorTransformer, Nullable, Take, PromiseCursorPagination } from './interfaces/paginator'
 import { Base64Transformer } from './transformers/base64-transformer'
 import { normalizeOrderBy } from './utils/normalizeOrderBy'
 
 
-export interface CursorPaginatorParams<TEntity extends ObjectLiteral, TColumnNames extends Record<string, string>> {
-  orderBy: OrderBy<TEntity & TColumnNames> | OrderBy<TEntity & TColumnNames>[]
-  columnNames?: TColumnNames | null
+export interface CursorPaginatorParams<TEntity extends ObjectLiteral> {
+  orderBy: OrderBy<TEntity> | OrderBy<TEntity>[]
   take?: Nullable<Take> | number | null
   transformer?: CursorTransformer<TEntity> | null
 }
@@ -18,10 +17,9 @@ export interface CursorPaginatorPaginateParams {
   take?: number | null
 }
 
-export class CursorPaginator<TEntity extends ObjectLiteral, TColumnNames extends Record<string, string>> {
+export class CursorPaginator<TEntity extends ObjectLiteral> {
 
   orders: [string, boolean][] = []
-  columnNames: Record<string, string>
   takeOptions: Take
   transformer: CursorTransformer<TEntity>
 
@@ -29,13 +27,11 @@ export class CursorPaginator<TEntity extends ObjectLiteral, TColumnNames extends
     public entity: ObjectType<TEntity>,
     {
       orderBy,
-      columnNames,
       take,
       transformer,
-    }: CursorPaginatorParams<TEntity, TColumnNames>,
+    }: CursorPaginatorParams<TEntity>,
   ) {
     this.orders = normalizeOrderBy(orderBy)
-    this.columnNames = columnNames ?? {}
     this.takeOptions = typeof take === 'number' ? {
       default: take,
       min: 0,
@@ -60,7 +56,7 @@ export class CursorPaginator<TEntity extends ObjectLiteral, TColumnNames extends
         qb.andWhere('1 = 0')
       }
       for (const [key, value] of this.orders) {
-        qb.addOrderBy(this.columnNames[key] || `${qb.alias}.${key}`, value ? 'DESC' : 'ASC')
+        qb.addOrderBy(`${qb.alias}.${key}`, value ? 'DESC' : 'ASC')
       }
 
       let hasPrev = false
@@ -90,7 +86,7 @@ export class CursorPaginator<TEntity extends ObjectLiteral, TColumnNames extends
       }
     }
     for (const [key, value] of this.orders) {
-      qb.addOrderBy(this.columnNames[key] || `${qb.alias}.${key}`, value ? 'ASC' : 'DESC')
+      qb.addOrderBy(`${qb.alias}.${key}`, value ? 'ASC' : 'DESC')
     }
 
     let hasNext = false
@@ -124,7 +120,7 @@ export class CursorPaginator<TEntity extends ObjectLiteral, TColumnNames extends
         qb.andWhere('1 = 0')
       }
       for (const [key, value] of this.orders) {
-        qb.addOrderBy(this.columnNames[key] || `${qb.alias}.${key}`, value ? 'DESC' : 'ASC')
+        qb.addOrderBy(`${qb.alias}.${key}`, value ? 'DESC' : 'ASC')
       }
 
       let cachePromiseNodes = null as Promise<Omit<CursorPagination<any>, 'count'>> | null
@@ -179,7 +175,7 @@ export class CursorPaginator<TEntity extends ObjectLiteral, TColumnNames extends
       }
     }
     for (const [key, value] of this.orders) {
-      qb.addOrderBy(this.columnNames[key] || `${qb.alias}.${key}`, value ? 'ASC' : 'DESC')
+      qb.addOrderBy(`${qb.alias}.${key}`, value ? 'ASC' : 'DESC')
     }
 
     let cachePromiseNodes = null as Promise<Omit<CursorPagination<any>, 'count'>> | null
@@ -238,7 +234,7 @@ export class CursorPaginator<TEntity extends ObjectLiteral, TColumnNames extends
     const queryParams = {} as Record<string, any>
 
     for (const [key, asc] of this.orders) {
-      const columnName = this.columnNames[key] || `${qb.alias}.${key}`
+      const columnName = `${qb.alias}.${key}`
       queryParts.push(`(${queryPrefix}${columnName} ${!asc !== isNext ? '>' : '<'} :cursor__${key})`)
       queryPrefix = `${queryPrefix}${columnName} = :cursor__${key} AND `
 

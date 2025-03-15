@@ -1,7 +1,8 @@
+import { ObjectLiteral } from 'typeorm'
 import { Cursor, CursorTransformer } from '../interfaces/paginator'
 
 
-export class Base64Transformer<TEntity> implements CursorTransformer<TEntity> {
+export class Base64Transformer<TEntity extends ObjectLiteral> implements CursorTransformer<TEntity> {
   parse(text: string): Cursor<TEntity> {
     return JSON.parse(Buffer.from(text, 'base64').toString())
   }

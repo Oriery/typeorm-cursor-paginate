@@ -4,33 +4,29 @@ import { OrderBy, PromisePagePagination, PagePagination, Nullable, Take } from '
 import { normalizeOrderBy } from './utils/normalizeOrderBy'
 
 
-export interface PagePaginatorParams<TEntity, TColumnNames extends Record<string, string>> {
-  columnNames?: TColumnNames | null
+export interface PagePaginatorParams<TEntity extends ObjectLiteral> {
   take?: Nullable<Take> | number | null
-  orderBy: OrderBy<TEntity & TColumnNames> | OrderBy<TEntity & TColumnNames>[]
+  orderBy: OrderBy<TEntity> | OrderBy<TEntity>[]
 }
 
-export interface PagePaginatorPaginateParams<TEntity, TColumnNames extends Record<string, string>> {
+export interface PagePaginatorPaginateParams<TEntity extends ObjectLiteral> {
   page?: number | null
   take?: number | null
-  orderBy?: OrderBy<TEntity & TColumnNames> | OrderBy<TEntity & TColumnNames>[]
+  orderBy?: OrderBy<TEntity> | OrderBy<TEntity>[]
 }
 
-export class PagePaginator<TEntity extends ObjectLiteral, TColumnNames extends Record<string, string>> {
+export class PagePaginator<TEntity extends ObjectLiteral> {
   orderBy: OrderBy<TEntity> | OrderBy<TEntity>[]
-  columnNames: Record<string, string>
   takeOptions: Take
 
   constructor(
     public entity: ObjectType<TEntity>,
     {
       orderBy,
-      columnNames,
       take,
-    }: PagePaginatorParams<TEntity, TColumnNames>,
+    }: PagePaginatorParams<TEntity>,
   ) {
     this.orderBy = orderBy
-    this.columnNames = columnNames ?? {}
     this.takeOptions = typeof take === 'number' ? {
       default: take,
       min: 0,
@@ -42,14 +38,14 @@ export class PagePaginator<TEntity extends ObjectLiteral, TColumnNames extends R
     }
   }
 
-  async paginate(qb: SelectQueryBuilder<TEntity>, params: PagePaginatorPaginateParams<TEntity, TColumnNames> = {}, isRaw = false): Promise<PagePagination<TEntity>> {
+  async paginate(qb: SelectQueryBuilder<TEntity>, params: PagePaginatorPaginateParams<TEntity> = {}, isRaw = false): Promise<PagePagination<TEntity>> {
     const page = Math.max(params.page ?? 1, 1)
     const take = Math.max(this.takeOptions.min, Math.min(params.take ?? this.takeOptions.default, this.takeOptions.max))
 
     const qbForCount = qb.clone()
 
     for (const [key, value] of normalizeOrderBy(params.orderBy ?? this.orderBy)) {
-      qb.addOrderBy(this.columnNames[key] || `${qb.alias}.${key}`, value ? 'ASC' : 'DESC')
+      qb.addOrderBy(`${qb.alias}.${key}`, value ? 'ASC' : 'DESC')
     }
 
     let hasNext = false
@@ -68,14 +64,14 @@ export class PagePaginator<TEntity extends ObjectLiteral, TColumnNames extends R
     }
   }
 
-  promisePaginate(qb: SelectQueryBuilder<TEntity>, params: PagePaginatorPaginateParams<TEntity, TColumnNames> = {}, isRaw = false): PromisePagePagination<TEntity> {
+  promisePaginate(qb: SelectQueryBuilder<TEntity>, params: PagePaginatorPaginateParams<TEntity> = {}, isRaw = false): PromisePagePagination<TEntity> {
     const page = Math.max(params.page ?? 1, 1)
     const take = Math.max(this.takeOptions.min, Math.min(params.take ?? this.takeOptions.default, this.takeOptions.max))
 
     const qbForCount = qb.clone()
 
     for (const [key, value] of normalizeOrderBy(params.orderBy ?? this.orderBy)) {
-      qb.addOrderBy(this.columnNames[key] || `${qb.alias}.${key}`, value ? 'ASC' : 'DESC')
+      qb.addOrderBy(`${qb.alias}.${key}`, value ? 'ASC' : 'DESC')
     }
 
     let cachePromiseNodes = null as Promise<Omit<PagePagination<any>, 'count'>> | null

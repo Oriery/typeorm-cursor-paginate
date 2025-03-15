@@ -1,3 +1,4 @@
+import { ObjectLiteral } from "typeorm"
 
 export type Nullable<T> = {
   [P in keyof T]?: T[P] | null
@@ -9,15 +10,15 @@ export interface Take {
   max: number
 }
 
-export type OrderBy<TEntity> = {
+export type OrderBy<TEntity extends ObjectLiteral> = {
   [TKey in keyof TEntity]?: boolean
 }
 
-export type Cursor<TEntity> = {
+export type Cursor<TEntity extends ObjectLiteral> = {
   [TKey in keyof TEntity]?: any
 }
 
-export interface CursorPagination<TEntity> {
+export interface CursorPagination<TEntity extends ObjectLiteral> {
   readonly count: number
   readonly nodes: TEntity[]
   readonly hasPrev: boolean
@@ -26,7 +27,7 @@ export interface CursorPagination<TEntity> {
   readonly nextCursor: string | null
 }
 
-export interface PromiseCursorPagination<TEntity> {
+export interface PromiseCursorPagination<TEntity extends ObjectLiteral> {
   readonly count: Promise<number>
   readonly nodes: Promise<TEntity[]>
   readonly hasPrev: Promise<boolean>
@@ -35,18 +36,18 @@ export interface PromiseCursorPagination<TEntity> {
   readonly nextCursor: Promise<string | null>
 }
 
-export interface CursorTransformer<TEntity> {
+export interface CursorTransformer<TEntity extends ObjectLiteral> {
   parse(text: string): Cursor<TEntity>
   stringify(cursor: Cursor<TEntity>): string
 }
 
-export interface PagePagination<TEntity> {
+export interface PagePagination<TEntity extends ObjectLiteral> {
   readonly count: number
   readonly nodes: TEntity[]
   readonly hasNext: boolean
 }
 
-export interface PromisePagePagination<TEntity> {
+export interface PromisePagePagination<TEntity extends ObjectLiteral> {
   readonly count: Promise<number>
   readonly nodes: Promise<TEntity[]>
   readonly hasNext: Promise<boolean>
