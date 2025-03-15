@@ -12,6 +12,7 @@ import {
   CursorTransformer,
   Nullable,
   Take,
+  DirectionalCursor,
 } from "./interfaces/paginator";
 import { Base64Transformer } from "./transformers/base64-transformer";
 import { normalizeOrderBy } from "./utils/normalizeOrderBy";
@@ -27,8 +28,7 @@ export interface CursorPaginatorParams<TEntity extends ObjectLiteral> {
 }
 
 export interface CursorPaginatorPaginateParams {
-  prevPageCursor?: string | null;
-  nextPageCursor?: string | null;
+  pageCursor?: string | null;
   limit?: number;
 }
 
@@ -53,31 +53,21 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
     // (getting metadata, etc.)
 
     const take = params.limit;
-
+    
     // a copy of the query builder without "limit", "where" and "order by"
     // will be used to get the total count
     const qbForCount = new SelectQueryBuilder(qb);
     
-    const directionIsProvided =
-      !!params.nextPageCursor || !!params.prevPageCursor;
-    if (!!params.nextPageCursor && !!params.prevPageCursor) {
-      throw new Error(
-        "Both nextPageCursor and prevPageCursor were provided which is forbidden."
-      );
-    }
+    const directionIsProvided = !!params.pageCursor;
+    const cursorTemp: string | null = params.pageCursor || null;
+    const directionalCursor = cursorTemp ? this._parseCursor(cursorTemp) : null;
     // directionIsNext is true if nextPageCursor is provided or if no cursor is provided
-    const directionIsNext = !!params.nextPageCursor || !directionIsProvided;
-    let workingCursor: string | null = null;
-    if (directionIsNext) {
-      workingCursor = params.nextPageCursor ?? null;
-    } else {
-      workingCursor = params.prevPageCursor ?? null;
-    }
-
-    if (workingCursor) {
+    const directionIsNext = directionalCursor ? directionalCursor.direction === "next" : true;
+    
+    if (directionalCursor) {
       this._applyWhereQuery(
         qb,
-        this._parseCursor(workingCursor),
+        directionalCursor.cursor,
         directionIsNext
       );
     }
@@ -110,18 +100,18 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
       hasPrevPage: directionIsNext
         // if a cursor was provided, assume that there is a page in the direction we came from
         // TODO: fix that, do not assume
-        ? (directionIsProvided && !!workingCursor)
+        ? directionIsProvided
         : hasPageInThePrimaryDirection,
       hasNextPage: directionIsNext
         ? hasPageInThePrimaryDirection
-        : (directionIsProvided && !!workingCursor),
+        : directionIsProvided,
       prevPageCursor:
         nodes.length > 0
-          ? this._stringifyCursor(this._createCursor(nodes[0]))
+          ? this._stringifyCursor(this._createCursor(nodes[0]), false)
           : null,
       nextPageCursor:
         nodes.length > 0
-          ? this._stringifyCursor(this._createCursor(nodes[nodes.length - 1]))
+          ? this._stringifyCursor(this._createCursor(nodes[nodes.length - 1]), true)
           : null,
     };
   }
@@ -168,11 +158,24 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
     return cursor;
   }
 
-  private _stringifyCursor(cursor: Cursor<TEntity>): string {
-    return this._transformer.stringify(cursor);
+  private _stringifyCursor(cursor: Cursor<TEntity>, isForNextPage: boolean): string {
+    return (isForNextPage ? 'next:' : 'prev:') + this._transformer.stringify(cursor);
   }
 
-  private _parseCursor(cursorString: string): Cursor<TEntity> {
-    return this._transformer.parse(cursorString);
+  private _parseCursor(cursorString: string): DirectionalCursor<TEntity> {
+    let rawCursor = '';
+    let isNext = false;
+    if (cursorString.startsWith('next:')) {
+      rawCursor = cursorString.slice(5);
+      isNext = true;
+    } else if (cursorString.startsWith('prev:')) {
+      rawCursor = cursorString.slice(5);
+    } else {
+      throw new Error('Cursor string must start with "next:" or "prev:"');
+    }
+    return {
+      cursor: this._transformer.parse(rawCursor),
+      direction: isNext ? 'next' : 'prev',
+    };
   }
 }

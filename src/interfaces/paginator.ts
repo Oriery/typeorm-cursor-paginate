@@ -20,6 +20,11 @@ export type Cursor<TEntity extends ObjectLiteral> = {
   [TKey in keyof TEntity]?: any;
 };
 
+export type DirectionalCursor<TEntity extends ObjectLiteral> = {
+  cursor: Cursor<TEntity>;
+  direction: "next" | "prev";
+};
+
 export interface CursorPagination<TEntity extends ObjectLiteral> {
   readonly totalCount: number;
   readonly nodes: TEntity[];
