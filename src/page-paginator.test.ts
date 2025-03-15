@@ -64,7 +64,7 @@ describe("testsuite of page-paginator", () => {
 
     const paginator = new PagePaginator(User, {
       orderBy: {
-        id: false,
+        id: 'DESC',
       },
     });
 
@@ -92,7 +92,7 @@ describe("testsuite of page-paginator", () => {
 
     const paginator = new PagePaginator(User, {
       orderBy: {
-        id: false,
+        id: 'DESC',
       },
       take: 3,
     });
@@ -140,7 +140,7 @@ describe("testsuite of page-paginator", () => {
     await repoUsers.save(nodes);
 
     const paginator = new PagePaginator(User, {
-      orderBy: [{ name: true }, { id: false }],
+      orderBy: [{ name: 'ASC' }, { id: 'DESC' }],
     });
 
     const pagination1 = await paginator.paginate(
@@ -199,7 +199,7 @@ describe("testsuite of page-paginator", () => {
 
     const paginator = new PagePaginator(User, {
       orderBy: {
-        id: false,
+        id: 'DESC',
       },
     });
 
@@ -229,7 +229,7 @@ describe("testsuite of page-paginator", () => {
 
     const paginator = new PagePaginator(User, {
       orderBy: {
-        id: false,
+        id: 'DESC',
       },
       take: 3,
     });
@@ -277,7 +277,7 @@ describe("testsuite of page-paginator", () => {
     await repoUsers.save(nodes);
 
     const paginator = new PagePaginator(User, {
-      orderBy: [{ name: true }, { id: false }],
+      orderBy: [{ name: 'ASC' }, { id: 'DESC' }],
     });
 
     const pagination1 = await testPromisePaginationAndResolve(

@@ -10,8 +10,10 @@ export interface Take {
   max: number;
 }
 
+export type Order = "ASC" | "DESC";
+
 export type OrderBy<TEntity extends ObjectLiteral> = {
-  [TKey in keyof TEntity]?: boolean;
+  [TKey in keyof TEntity]?: Order;
 };
 
 export type Cursor<TEntity extends ObjectLiteral> = {
