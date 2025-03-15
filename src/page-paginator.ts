@@ -62,7 +62,7 @@ export class PagePaginator<TEntity extends ObjectLiteral> {
       qb.addOrderBy(`${qb.alias}.${key}`, value ? "ASC" : "DESC");
     }
 
-    let hasNext = false;
+    let hasNextPage = false;
     const query = qb
       .clone()
       .offset((page - 1) * take)
@@ -70,16 +70,16 @@ export class PagePaginator<TEntity extends ObjectLiteral> {
     const nodes = await (isRaw ? query.getRawMany() : query.getMany()).then(
       (nodes) => {
         if (nodes.length > take) {
-          hasNext = true;
+          hasNextPage = true;
         }
         return nodes.slice(0, take);
       },
     );
 
     return {
-      count: await qbForCount.getCount(),
+      totalCount: await qbForCount.getCount(),
       nodes,
-      hasNext,
+      hasNextPage,
     };
   }
 
@@ -103,7 +103,7 @@ export class PagePaginator<TEntity extends ObjectLiteral> {
     }
 
     let cachePromiseNodes = null as Promise<
-      Omit<PagePagination<any>, "count">
+      Omit<PagePagination<any>, "totalCount">
     > | null;
     const promiseNodes = () => {
       if (!cachePromiseNodes) {
@@ -113,12 +113,12 @@ export class PagePaginator<TEntity extends ObjectLiteral> {
           .limit(take + 1);
         cachePromiseNodes = (isRaw ? query.getRawMany() : query.getMany()).then(
           (nodes) => {
-            let hasNext = false;
+            let hasNextPage = false;
             if (nodes.length > take) {
-              hasNext = true;
+              hasNextPage = true;
             }
             return {
-              hasNext,
+              hasNextPage,
               nodes: nodes.slice(0, take),
             };
           },
@@ -128,14 +128,14 @@ export class PagePaginator<TEntity extends ObjectLiteral> {
     };
 
     return {
-      get count() {
+      get totalCount() {
         return qbForCount.getCount();
       },
       get nodes() {
         return promiseNodes().then(({ nodes }) => nodes);
       },
-      get hasNext() {
-        return promiseNodes().then(({ hasNext }) => hasNext);
+      get hasNextPage() {
+        return promiseNodes().then(({ hasNextPage }) => hasNextPage);
       },
     };
   }

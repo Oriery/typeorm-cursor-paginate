@@ -24,8 +24,8 @@ export interface CursorPaginatorParams<TEntity extends ObjectLiteral> {
 }
 
 export interface CursorPaginatorPaginateParams {
-  prevCursor?: string | null;
-  nextCursor?: string | null;
+  prevPageCursor?: string | null;
+  nextPageCursor?: string | null;
   take?: number | null;
 }
 
@@ -66,11 +66,11 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
 
     const qbForCount = qb.clone();
 
-    if (params.prevCursor) {
+    if (params.prevPageCursor) {
       try {
         this._applyWhereQuery(
           qb,
-          this.transformer.parse(params.prevCursor),
+          this.transformer.parse(params.prevPageCursor),
           false,
         );
       } catch {
@@ -80,27 +80,27 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
         qb.addOrderBy(`${qb.alias}.${key}`, value ? "DESC" : "ASC");
       }
 
-      let hasPrev = false;
+      let hasPrevPage = false;
       const query = qb.clone().take(take + 1);
       const nodes = await (isRaw ? query.getRawMany() : query.getMany()).then(
         (nodes) => {
           if (nodes.length > take) {
-            hasPrev = true;
+            hasPrevPage = true;
           }
           return nodes.slice(0, take).reverse();
         },
       );
 
       return {
-        count: await qbForCount.getCount(),
+        totalCount: await qbForCount.getCount(),
         nodes,
-        hasPrev,
-        hasNext: true,
-        prevCursor:
+        hasPrevPage,
+        hasNextPage: true,
+        prevPageCursor:
           nodes.length > 0
             ? this.transformer.stringify(this._createCursor(nodes[0]))
             : null,
-        nextCursor:
+        nextPageCursor:
           nodes.length > 0
             ? this.transformer.stringify(
                 this._createCursor(nodes[nodes.length - 1]),
@@ -109,11 +109,11 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
       };
     }
 
-    if (params.nextCursor) {
+    if (params.nextPageCursor) {
       try {
         this._applyWhereQuery(
           qb,
-          this.transformer.parse(params.nextCursor),
+          this.transformer.parse(params.nextPageCursor),
           true,
         );
       } catch {
@@ -124,27 +124,27 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
       qb.addOrderBy(`${qb.alias}.${key}`, value ? "ASC" : "DESC");
     }
 
-    let hasNext = false;
+    let hasNextPage = false;
     const query = qb.clone().take(take + 1);
     const nodes = await (isRaw ? query.getRawMany() : query.getMany()).then(
       (nodes) => {
         if (nodes.length > take) {
-          hasNext = true;
+          hasNextPage = true;
         }
         return nodes.slice(0, take);
       },
     );
 
     return {
-      count: await qbForCount.getCount(),
+      totalCount: await qbForCount.getCount(),
       nodes: nodes.slice(0, take),
-      hasPrev: !!params.nextCursor,
-      hasNext,
-      prevCursor:
+      hasPrevPage: !!params.nextPageCursor,
+      hasNextPage,
+      prevPageCursor:
         nodes.length > 0
           ? this.transformer.stringify(this._createCursor(nodes[0]))
           : null,
-      nextCursor:
+      nextPageCursor:
         nodes.length > 0
           ? this.transformer.stringify(
               this._createCursor(nodes[nodes.length - 1]),
@@ -165,11 +165,11 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
 
     const qbForCount = qb.clone();
 
-    if (params.prevCursor) {
+    if (params.prevPageCursor) {
       try {
         this._applyWhereQuery(
           qb,
-          this.transformer.parse(params.prevCursor),
+          this.transformer.parse(params.prevPageCursor),
           false,
         );
       } catch {
@@ -180,7 +180,7 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
       }
 
       let cachePromiseNodes = null as Promise<
-        Omit<CursorPagination<any>, "count">
+        Omit<CursorPagination<any>, "totalCount">
       > | null;
       const promiseNodes = () => {
         if (!cachePromiseNodes) {
@@ -188,20 +188,20 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
           cachePromiseNodes = (
             isRaw ? query.getRawMany() : query.getMany()
           ).then((nodes) => {
-            let hasPrev = false;
+            let hasPrevPage = false;
             if (nodes.length > take) {
-              hasPrev = true;
+              hasPrevPage = true;
             }
             nodes = nodes.slice(0, take).reverse();
             return {
               nodes,
-              hasPrev,
-              hasNext: true,
-              prevCursor:
+              hasPrevPage,
+              hasNextPage: true,
+              prevPageCursor:
                 nodes.length > 0
                   ? this.transformer.stringify(this._createCursor(nodes[0]))
                   : null,
-              nextCursor:
+              nextPageCursor:
                 nodes.length > 0
                   ? this.transformer.stringify(
                       this._createCursor(nodes[nodes.length - 1]),
@@ -214,32 +214,32 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
       };
 
       return {
-        get count() {
+        get totalCount() {
           return qbForCount.getCount();
         },
         get nodes() {
           return promiseNodes().then(({ nodes }) => nodes);
         },
-        get hasPrev() {
-          return promiseNodes().then(({ hasPrev }) => hasPrev);
+        get hasPrevPage() {
+          return promiseNodes().then(({ hasPrevPage }) => hasPrevPage);
         },
-        get hasNext() {
-          return promiseNodes().then(({ hasNext }) => hasNext);
+        get hasNextPage() {
+          return promiseNodes().then(({ hasNextPage }) => hasNextPage);
         },
-        get prevCursor() {
-          return promiseNodes().then(({ prevCursor }) => prevCursor);
+        get prevPageCursor() {
+          return promiseNodes().then(({ prevPageCursor }) => prevPageCursor);
         },
-        get nextCursor() {
-          return promiseNodes().then(({ nextCursor }) => nextCursor);
+        get nextPageCursor() {
+          return promiseNodes().then(({ nextPageCursor }) => nextPageCursor);
         },
       };
     }
 
-    if (params.nextCursor) {
+    if (params.nextPageCursor) {
       try {
         this._applyWhereQuery(
           qb,
-          this.transformer.parse(params.nextCursor),
+          this.transformer.parse(params.nextPageCursor),
           true,
         );
       } catch {
@@ -251,27 +251,27 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
     }
 
     let cachePromiseNodes = null as Promise<
-      Omit<CursorPagination<any>, "count">
+      Omit<CursorPagination<any>, "totalCount">
     > | null;
     const promiseNodes = () => {
       if (!cachePromiseNodes) {
         const query = qb.clone().take(take + 1);
         cachePromiseNodes = (isRaw ? query.getRawMany() : query.getMany()).then(
           (nodes) => {
-            let hasNext = false;
+            let hasNextPage = false;
             if (nodes.length > take) {
-              hasNext = true;
+              hasNextPage = true;
             }
             nodes = nodes.slice(0, take);
             return {
               nodes: nodes.slice(0, take),
-              hasPrev: !!params.nextCursor,
-              hasNext,
-              prevCursor:
+              hasPrevPage: !!params.nextPageCursor,
+              hasNextPage,
+              prevPageCursor:
                 nodes.length > 0
                   ? this.transformer.stringify(this._createCursor(nodes[0]))
                   : null,
-              nextCursor:
+              nextPageCursor:
                 nodes.length > 0
                   ? this.transformer.stringify(
                       this._createCursor(nodes[nodes.length - 1]),
@@ -285,23 +285,23 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
     };
 
     return {
-      get count() {
+      get totalCount() {
         return qbForCount.getCount();
       },
       get nodes() {
         return promiseNodes().then(({ nodes }) => nodes);
       },
-      get hasPrev() {
-        return promiseNodes().then(({ hasPrev }) => hasPrev);
+      get hasPrevPage() {
+        return promiseNodes().then(({ hasPrevPage }) => hasPrevPage);
       },
-      get hasNext() {
-        return promiseNodes().then(({ hasNext }) => hasNext);
+      get hasNextPage() {
+        return promiseNodes().then(({ hasNextPage }) => hasNextPage);
       },
-      get prevCursor() {
-        return promiseNodes().then(({ prevCursor }) => prevCursor);
+      get prevPageCursor() {
+        return promiseNodes().then(({ prevPageCursor }) => prevPageCursor);
       },
-      get nextCursor() {
-        return promiseNodes().then(({ nextCursor }) => nextCursor);
+      get nextPageCursor() {
+        return promiseNodes().then(({ nextPageCursor }) => nextPageCursor);
       },
     };
   }

@@ -79,20 +79,20 @@ class User {
 function testPromisePaginationAndResolve(
   pagination: PromiseCursorPagination<any>,
 ): Promise<CursorPagination<any>> {
-  expect(pagination.count).toBeInstanceOf(Promise);
-  expect(pagination.hasNext).toBeInstanceOf(Promise);
-  expect(pagination.hasPrev).toBeInstanceOf(Promise);
-  expect(pagination.nextCursor).toBeInstanceOf(Promise);
-  expect(pagination.prevCursor).toBeInstanceOf(Promise);
+  expect(pagination.totalCount).toBeInstanceOf(Promise);
+  expect(pagination.hasNextPage).toBeInstanceOf(Promise);
+  expect(pagination.hasPrevPage).toBeInstanceOf(Promise);
+  expect(pagination.nextPageCursor).toBeInstanceOf(Promise);
+  expect(pagination.prevPageCursor).toBeInstanceOf(Promise);
   expect(pagination.nodes).toBeInstanceOf(Promise);
 
   return Promise.resolve().then(async () => ({
-    count: await pagination.count,
+    totalCount: await pagination.totalCount,
     nodes: await pagination.nodes,
-    hasPrev: await pagination.hasPrev,
-    hasNext: await pagination.hasNext,
-    prevCursor: await pagination.prevCursor,
-    nextCursor: await pagination.nextCursor,
+    hasPrevPage: await pagination.hasPrevPage,
+    hasNextPage: await pagination.hasNextPage,
+    prevPageCursor: await pagination.prevPageCursor,
+    nextPageCursor: await pagination.nextPageCursor,
   }));
 }
 
@@ -134,12 +134,12 @@ describe("testsuite of cursor-paginator", () => {
 
     const pagination = await paginator.paginate(repoUsers.createQueryBuilder());
     expect(pagination).toEqual({
-      count: 6,
+      totalCount: 6,
       nodes: [nodes[5], nodes[4], nodes[3], nodes[2], nodes[1], nodes[0]],
-      hasPrev: false,
-      hasNext: false,
-      nextCursor: expect.any(String),
-      prevCursor: expect.any(String),
+      hasPrevPage: false,
+      hasNextPage: false,
+      nextPageCursor: expect.any(String),
+      prevPageCursor: expect.any(String),
     });
   });
 
@@ -166,64 +166,64 @@ describe("testsuite of cursor-paginator", () => {
 
     const pagination = await paginator.paginate(repoUsers.createQueryBuilder());
     expect(pagination).toEqual({
-      count: 6,
+      totalCount: 6,
       nodes: [nodes[5], nodes[4], nodes[3]],
-      hasPrev: false,
-      hasNext: true,
-      prevCursor: expect.any(String),
-      nextCursor: expect.any(String),
+      hasPrevPage: false,
+      hasNextPage: true,
+      prevPageCursor: expect.any(String),
+      nextPageCursor: expect.any(String),
     });
 
     const paginationPrev = await paginator.paginate(
       repoUsers.createQueryBuilder(),
-      { prevCursor: pagination.prevCursor },
+      { prevPageCursor: pagination.prevPageCursor },
     );
     expect(paginationPrev).toEqual({
-      count: 6,
+      totalCount: 6,
       nodes: [],
-      hasPrev: false,
-      hasNext: true,
-      prevCursor: null,
-      nextCursor: null,
+      hasPrevPage: false,
+      hasNextPage: true,
+      prevPageCursor: null,
+      nextPageCursor: null,
     });
 
     const paginationNext = await paginator.paginate(
       repoUsers.createQueryBuilder(),
-      { nextCursor: pagination.nextCursor },
+      { nextPageCursor: pagination.nextPageCursor },
     );
     expect(paginationNext).toEqual({
-      count: 6,
+      totalCount: 6,
       nodes: [nodes[2], nodes[1], nodes[0]],
-      hasPrev: true,
-      hasNext: false,
-      prevCursor: expect.any(String),
-      nextCursor: expect.any(String),
+      hasPrevPage: true,
+      hasNextPage: false,
+      prevPageCursor: expect.any(String),
+      nextPageCursor: expect.any(String),
     });
 
     const paginationNextPrev = await paginator.paginate(
       repoUsers.createQueryBuilder(),
-      { prevCursor: paginationNext.prevCursor },
+      { prevPageCursor: paginationNext.prevPageCursor },
     );
     expect(paginationNextPrev).toEqual({
-      count: 6,
+      totalCount: 6,
       nodes: [nodes[5], nodes[4], nodes[3]],
-      hasPrev: false,
-      hasNext: true,
-      prevCursor: expect.any(String),
-      nextCursor: expect.any(String),
+      hasPrevPage: false,
+      hasNextPage: true,
+      prevPageCursor: expect.any(String),
+      nextPageCursor: expect.any(String),
     });
 
     const paginationNextNext = await paginator.paginate(
       repoUsers.createQueryBuilder(),
-      { nextCursor: paginationNext.nextCursor },
+      { nextPageCursor: paginationNext.nextPageCursor },
     );
     expect(paginationNextNext).toEqual({
-      count: 6,
+      totalCount: 6,
       nodes: [],
-      hasPrev: true,
-      hasNext: false,
-      prevCursor: null,
-      nextCursor: null,
+      hasPrevPage: true,
+      hasNextPage: false,
+      prevPageCursor: null,
+      nextPageCursor: null,
     });
   });
 
@@ -249,12 +249,12 @@ describe("testsuite of cursor-paginator", () => {
       repoUsers.createQueryBuilder(),
     );
     expect(pagination1).toEqual({
-      count: 6,
+      totalCount: 6,
       nodes: [nodes[2], nodes[4], nodes[1], nodes[5], nodes[3], nodes[0]],
-      hasPrev: false,
-      hasNext: false,
-      prevCursor: expect.any(String),
-      nextCursor: expect.any(String),
+      hasPrevPage: false,
+      hasNextPage: false,
+      prevPageCursor: expect.any(String),
+      nextPageCursor: expect.any(String),
     });
 
     const pagination2 = await paginator.paginate(
@@ -262,51 +262,51 @@ describe("testsuite of cursor-paginator", () => {
       { take: 2 },
     );
     expect(pagination2).toEqual({
-      count: 6,
+      totalCount: 6,
       nodes: [nodes[2], nodes[4]],
-      hasPrev: false,
-      hasNext: true,
-      prevCursor: expect.any(String),
-      nextCursor: expect.any(String),
+      hasPrevPage: false,
+      hasNextPage: true,
+      prevPageCursor: expect.any(String),
+      nextPageCursor: expect.any(String),
     });
 
     const pagination2Next = await paginator.paginate(
       repoUsers.createQueryBuilder(),
-      { take: 2, nextCursor: pagination2.nextCursor },
+      { take: 2, nextPageCursor: pagination2.nextPageCursor },
     );
     expect(pagination2Next).toEqual({
-      count: 6,
+      totalCount: 6,
       nodes: [nodes[1], nodes[5]],
-      hasPrev: true,
-      hasNext: true,
-      prevCursor: expect.any(String),
-      nextCursor: expect.any(String),
+      hasPrevPage: true,
+      hasNextPage: true,
+      prevPageCursor: expect.any(String),
+      nextPageCursor: expect.any(String),
     });
 
     const pagination2NextNext = await paginator.paginate(
       repoUsers.createQueryBuilder(),
-      { take: 2, nextCursor: pagination2Next.nextCursor },
+      { take: 2, nextPageCursor: pagination2Next.nextPageCursor },
     );
     expect(pagination2NextNext).toEqual({
-      count: 6,
+      totalCount: 6,
       nodes: [nodes[3], nodes[0]],
-      hasPrev: true,
-      hasNext: false,
-      prevCursor: expect.any(String),
-      nextCursor: expect.any(String),
+      hasPrevPage: true,
+      hasNextPage: false,
+      prevPageCursor: expect.any(String),
+      nextPageCursor: expect.any(String),
     });
 
     const pagination2NextNextPrev = await paginator.paginate(
       repoUsers.createQueryBuilder(),
-      { take: 2, prevCursor: pagination2NextNext.prevCursor },
+      { take: 2, prevPageCursor: pagination2NextNext.prevPageCursor },
     );
     expect(pagination2NextNextPrev).toEqual({
-      count: 6,
+      totalCount: 6,
       nodes: [nodes[1], nodes[5]],
-      hasPrev: true,
-      hasNext: true,
-      prevCursor: expect.any(String),
-      nextCursor: expect.any(String),
+      hasPrevPage: true,
+      hasNextPage: true,
+      prevPageCursor: expect.any(String),
+      nextPageCursor: expect.any(String),
     });
   });
 
@@ -333,64 +333,64 @@ describe("testsuite of cursor-paginator", () => {
 
     const pagination = await paginator.paginate(repoUsers.createQueryBuilder());
     expect(pagination).toEqual({
-      count: 6,
+      totalCount: 6,
       nodes: [nodes[2], nodes[4], nodes[1]],
-      hasPrev: false,
-      hasNext: true,
-      prevCursor: expect.any(String),
-      nextCursor: expect.any(String),
+      hasPrevPage: false,
+      hasNextPage: true,
+      prevPageCursor: expect.any(String),
+      nextPageCursor: expect.any(String),
     });
 
     const paginationPrev = await paginator.paginate(
       repoUsers.createQueryBuilder(),
-      { prevCursor: pagination.prevCursor },
+      { prevPageCursor: pagination.prevPageCursor },
     );
     expect(paginationPrev).toEqual({
-      count: 6,
+      totalCount: 6,
       nodes: [],
-      hasPrev: false,
-      hasNext: true,
-      prevCursor: null,
-      nextCursor: null,
+      hasPrevPage: false,
+      hasNextPage: true,
+      prevPageCursor: null,
+      nextPageCursor: null,
     });
 
     const paginationNext = await paginator.paginate(
       repoUsers.createQueryBuilder(),
-      { nextCursor: pagination.nextCursor },
+      { nextPageCursor: pagination.nextPageCursor },
     );
     expect(paginationNext).toEqual({
-      count: 6,
+      totalCount: 6,
       nodes: [nodes[3], nodes[5], nodes[0]],
-      hasPrev: true,
-      hasNext: false,
-      prevCursor: expect.any(String),
-      nextCursor: expect.any(String),
+      hasPrevPage: true,
+      hasNextPage: false,
+      prevPageCursor: expect.any(String),
+      nextPageCursor: expect.any(String),
     });
 
     const paginationNextPrev = await paginator.paginate(
       repoUsers.createQueryBuilder(),
-      { prevCursor: paginationNext.prevCursor },
+      { prevPageCursor: paginationNext.prevPageCursor },
     );
     expect(paginationNextPrev).toEqual({
-      count: 6,
+      totalCount: 6,
       nodes: [nodes[2], nodes[4], nodes[1]],
-      hasPrev: false,
-      hasNext: true,
-      prevCursor: expect.any(String),
-      nextCursor: expect.any(String),
+      hasPrevPage: false,
+      hasNextPage: true,
+      prevPageCursor: expect.any(String),
+      nextPageCursor: expect.any(String),
     });
 
     const paginationNextNext = await paginator.paginate(
       repoUsers.createQueryBuilder(),
-      { nextCursor: paginationNext.nextCursor },
+      { nextPageCursor: paginationNext.nextPageCursor },
     );
     expect(paginationNextNext).toEqual({
-      count: 6,
+      totalCount: 6,
       nodes: [],
-      hasPrev: true,
-      hasNext: false,
-      prevCursor: null,
-      nextCursor: null,
+      hasPrevPage: true,
+      hasNextPage: false,
+      prevPageCursor: null,
+      nextPageCursor: null,
     });
   });
 
@@ -418,12 +418,12 @@ describe("testsuite of cursor-paginator", () => {
       paginator.promisePaginate(repoUsers.createQueryBuilder()),
     );
     expect(pagination).toEqual({
-      count: 6,
+      totalCount: 6,
       nodes: [nodes[5], nodes[4], nodes[3], nodes[2], nodes[1], nodes[0]],
-      hasPrev: false,
-      hasNext: false,
-      nextCursor: expect.any(String),
-      prevCursor: expect.any(String),
+      hasPrevPage: false,
+      hasNextPage: false,
+      nextPageCursor: expect.any(String),
+      prevPageCursor: expect.any(String),
     });
   });
 
@@ -453,68 +453,68 @@ describe("testsuite of cursor-paginator", () => {
     );
 
     expect(pagination).toEqual({
-      count: 6,
+      totalCount: 6,
       nodes: [nodes[5], nodes[4], nodes[3]],
-      hasPrev: false,
-      hasNext: true,
-      prevCursor: expect.any(String),
-      nextCursor: expect.any(String),
+      hasPrevPage: false,
+      hasNextPage: true,
+      prevPageCursor: expect.any(String),
+      nextPageCursor: expect.any(String),
     });
 
     const paginationPrev = await testPromisePaginationAndResolve(
       paginator.promisePaginate(repoUsers.createQueryBuilder(), {
-        prevCursor: pagination.prevCursor,
+        prevPageCursor: pagination.prevPageCursor,
       }),
     );
     expect(paginationPrev).toEqual({
-      count: 6,
+      totalCount: 6,
       nodes: [],
-      hasPrev: false,
-      hasNext: true,
-      prevCursor: null,
-      nextCursor: null,
+      hasPrevPage: false,
+      hasNextPage: true,
+      prevPageCursor: null,
+      nextPageCursor: null,
     });
 
     const paginationNext = await testPromisePaginationAndResolve(
       paginator.promisePaginate(repoUsers.createQueryBuilder(), {
-        nextCursor: pagination.nextCursor,
+        nextPageCursor: pagination.nextPageCursor,
       }),
     );
     expect(paginationNext).toEqual({
-      count: 6,
+      totalCount: 6,
       nodes: [nodes[2], nodes[1], nodes[0]],
-      hasPrev: true,
-      hasNext: false,
-      prevCursor: expect.any(String),
-      nextCursor: expect.any(String),
+      hasPrevPage: true,
+      hasNextPage: false,
+      prevPageCursor: expect.any(String),
+      nextPageCursor: expect.any(String),
     });
 
     const paginationNextPrev = await testPromisePaginationAndResolve(
       paginator.promisePaginate(repoUsers.createQueryBuilder(), {
-        prevCursor: paginationNext.prevCursor,
+        prevPageCursor: paginationNext.prevPageCursor,
       }),
     );
     expect(paginationNextPrev).toEqual({
-      count: 6,
+      totalCount: 6,
       nodes: [nodes[5], nodes[4], nodes[3]],
-      hasPrev: false,
-      hasNext: true,
-      prevCursor: expect.any(String),
-      nextCursor: expect.any(String),
+      hasPrevPage: false,
+      hasNextPage: true,
+      prevPageCursor: expect.any(String),
+      nextPageCursor: expect.any(String),
     });
 
     const paginationNextNext = await testPromisePaginationAndResolve(
       paginator.promisePaginate(repoUsers.createQueryBuilder(), {
-        nextCursor: paginationNext.nextCursor,
+        nextPageCursor: paginationNext.nextPageCursor,
       }),
     );
     expect(paginationNextNext).toEqual({
-      count: 6,
+      totalCount: 6,
       nodes: [],
-      hasPrev: true,
-      hasNext: false,
-      prevCursor: null,
-      nextCursor: null,
+      hasPrevPage: true,
+      hasNextPage: false,
+      prevPageCursor: null,
+      nextPageCursor: null,
     });
   });
 
@@ -540,69 +540,69 @@ describe("testsuite of cursor-paginator", () => {
       paginator.promisePaginate(repoUsers.createQueryBuilder()),
     );
     expect(pagination1).toEqual({
-      count: 6,
+      totalCount: 6,
       nodes: [nodes[2], nodes[4], nodes[1], nodes[5], nodes[3], nodes[0]],
-      hasPrev: false,
-      hasNext: false,
-      prevCursor: expect.any(String),
-      nextCursor: expect.any(String),
+      hasPrevPage: false,
+      hasNextPage: false,
+      prevPageCursor: expect.any(String),
+      nextPageCursor: expect.any(String),
     });
 
     const pagination2 = await testPromisePaginationAndResolve(
       paginator.promisePaginate(repoUsers.createQueryBuilder(), { take: 2 }),
     );
     expect(pagination2).toEqual({
-      count: 6,
+      totalCount: 6,
       nodes: [nodes[2], nodes[4]],
-      hasPrev: false,
-      hasNext: true,
-      prevCursor: expect.any(String),
-      nextCursor: expect.any(String),
+      hasPrevPage: false,
+      hasNextPage: true,
+      prevPageCursor: expect.any(String),
+      nextPageCursor: expect.any(String),
     });
 
     const pagination2Next = await testPromisePaginationAndResolve(
       paginator.promisePaginate(repoUsers.createQueryBuilder(), {
         take: 2,
-        nextCursor: pagination2.nextCursor,
+        nextPageCursor: pagination2.nextPageCursor,
       }),
     );
     expect(pagination2Next).toEqual({
-      count: 6,
+      totalCount: 6,
       nodes: [nodes[1], nodes[5]],
-      hasPrev: true,
-      hasNext: true,
-      prevCursor: expect.any(String),
-      nextCursor: expect.any(String),
+      hasPrevPage: true,
+      hasNextPage: true,
+      prevPageCursor: expect.any(String),
+      nextPageCursor: expect.any(String),
     });
 
     const pagination2NextNext = await testPromisePaginationAndResolve(
       paginator.promisePaginate(repoUsers.createQueryBuilder(), {
         take: 2,
-        nextCursor: pagination2Next.nextCursor,
+        nextPageCursor: pagination2Next.nextPageCursor,
       }),
     );
     expect(pagination2NextNext).toEqual({
-      count: 6,
+      totalCount: 6,
       nodes: [nodes[3], nodes[0]],
-      hasPrev: true,
-      hasNext: false,
-      prevCursor: expect.any(String),
-      nextCursor: expect.any(String),
+      hasPrevPage: true,
+      hasNextPage: false,
+      prevPageCursor: expect.any(String),
+      nextPageCursor: expect.any(String),
     });
 
     const pagination2NextNextPrev = await testPromisePaginationAndResolve(
       paginator.promisePaginate(repoUsers.createQueryBuilder(), {
         take: 2,
-        prevCursor: pagination2NextNext.prevCursor,
+        prevPageCursor: pagination2NextNext.prevPageCursor,
       }),
     );
     expect(pagination2NextNextPrev).toEqual({
-      count: 6,
+      totalCount: 6,
       nodes: [nodes[1], nodes[5]],
-      hasPrev: true,
-      hasNext: true,
-      prevCursor: expect.any(String),
-      nextCursor: expect.any(String),
+      hasPrevPage: true,
+      hasNextPage: true,
+      prevPageCursor: expect.any(String),
+      nextPageCursor: expect.any(String),
     });
   });
 
@@ -631,68 +631,68 @@ describe("testsuite of cursor-paginator", () => {
       paginator.promisePaginate(repoUsers.createQueryBuilder()),
     );
     expect(pagination).toEqual({
-      count: 6,
+      totalCount: 6,
       nodes: [nodes[2], nodes[4], nodes[1]],
-      hasPrev: false,
-      hasNext: true,
-      prevCursor: expect.any(String),
-      nextCursor: expect.any(String),
+      hasPrevPage: false,
+      hasNextPage: true,
+      prevPageCursor: expect.any(String),
+      nextPageCursor: expect.any(String),
     });
 
     const paginationPrev = await testPromisePaginationAndResolve(
       paginator.promisePaginate(repoUsers.createQueryBuilder(), {
-        prevCursor: pagination.prevCursor,
+        prevPageCursor: pagination.prevPageCursor,
       }),
     );
     expect(paginationPrev).toEqual({
-      count: 6,
+      totalCount: 6,
       nodes: [],
-      hasPrev: false,
-      hasNext: true,
-      prevCursor: null,
-      nextCursor: null,
+      hasPrevPage: false,
+      hasNextPage: true,
+      prevPageCursor: null,
+      nextPageCursor: null,
     });
 
     const paginationNext = await testPromisePaginationAndResolve(
       paginator.promisePaginate(repoUsers.createQueryBuilder(), {
-        nextCursor: pagination.nextCursor,
+        nextPageCursor: pagination.nextPageCursor,
       }),
     );
     expect(paginationNext).toEqual({
-      count: 6,
+      totalCount: 6,
       nodes: [nodes[3], nodes[5], nodes[0]],
-      hasPrev: true,
-      hasNext: false,
-      prevCursor: expect.any(String),
-      nextCursor: expect.any(String),
+      hasPrevPage: true,
+      hasNextPage: false,
+      prevPageCursor: expect.any(String),
+      nextPageCursor: expect.any(String),
     });
 
     const paginationNextPrev = await testPromisePaginationAndResolve(
       paginator.promisePaginate(repoUsers.createQueryBuilder(), {
-        prevCursor: paginationNext.prevCursor,
+        prevPageCursor: paginationNext.prevPageCursor,
       }),
     );
     expect(paginationNextPrev).toEqual({
-      count: 6,
+      totalCount: 6,
       nodes: [nodes[2], nodes[4], nodes[1]],
-      hasPrev: false,
-      hasNext: true,
-      prevCursor: expect.any(String),
-      nextCursor: expect.any(String),
+      hasPrevPage: false,
+      hasNextPage: true,
+      prevPageCursor: expect.any(String),
+      nextPageCursor: expect.any(String),
     });
 
     const paginationNextNext = await testPromisePaginationAndResolve(
       paginator.promisePaginate(repoUsers.createQueryBuilder(), {
-        nextCursor: paginationNext.nextCursor,
+        nextPageCursor: paginationNext.nextPageCursor,
       }),
     );
     expect(paginationNextNext).toEqual({
-      count: 6,
+      totalCount: 6,
       nodes: [],
-      hasPrev: true,
-      hasNext: false,
-      prevCursor: null,
-      nextCursor: null,
+      hasPrevPage: true,
+      hasNextPage: false,
+      prevPageCursor: null,
+      nextPageCursor: null,
     });
   });
 });

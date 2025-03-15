@@ -21,21 +21,21 @@ export type Cursor<TEntity extends ObjectLiteral> = {
 };
 
 export interface CursorPagination<TEntity extends ObjectLiteral> {
-  readonly count: number;
+  readonly totalCount: number;
   readonly nodes: TEntity[];
-  readonly hasPrev: boolean;
-  readonly hasNext: boolean;
-  readonly prevCursor: string | null;
-  readonly nextCursor: string | null;
+  readonly hasPrevPage: boolean;
+  readonly hasNextPage: boolean;
+  readonly prevPageCursor: string | null;
+  readonly nextPageCursor: string | null;
 }
 
 export interface PromiseCursorPagination<TEntity extends ObjectLiteral> {
-  readonly count: Promise<number>;
+  readonly totalCount: Promise<number>;
   readonly nodes: Promise<TEntity[]>;
-  readonly hasPrev: Promise<boolean>;
-  readonly hasNext: Promise<boolean>;
-  readonly prevCursor: Promise<string | null>;
-  readonly nextCursor: Promise<string | null>;
+  readonly hasPrevPage: Promise<boolean>;
+  readonly hasNextPage: Promise<boolean>;
+  readonly prevPageCursor: Promise<string | null>;
+  readonly nextPageCursor: Promise<string | null>;
 }
 
 export interface CursorTransformer<TEntity extends ObjectLiteral> {
@@ -44,13 +44,13 @@ export interface CursorTransformer<TEntity extends ObjectLiteral> {
 }
 
 export interface PagePagination<TEntity extends ObjectLiteral> {
-  readonly count: number;
+  readonly totalCount: number;
   readonly nodes: TEntity[];
-  readonly hasNext: boolean;
+  readonly hasNextPage: boolean;
 }
 
 export interface PromisePagePagination<TEntity extends ObjectLiteral> {
-  readonly count: Promise<number>;
+  readonly totalCount: Promise<number>;
   readonly nodes: Promise<TEntity[]>;
-  readonly hasNext: Promise<boolean>;
+  readonly hasNextPage: Promise<boolean>;
 }

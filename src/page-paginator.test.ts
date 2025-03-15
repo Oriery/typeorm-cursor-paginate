@@ -21,14 +21,14 @@ class User {
 function testPromisePaginationAndResolve(
   pagination: PromisePagePagination<any>,
 ): Promise<PagePagination<any>> {
-  expect(pagination.count).toBeInstanceOf(Promise);
-  expect(pagination.hasNext).toBeInstanceOf(Promise);
+  expect(pagination.totalCount).toBeInstanceOf(Promise);
+  expect(pagination.hasNextPage).toBeInstanceOf(Promise);
   expect(pagination.nodes).toBeInstanceOf(Promise);
 
   return Promise.resolve().then(async () => ({
-    count: await pagination.count,
+    totalCount: await pagination.totalCount,
     nodes: await pagination.nodes,
-    hasNext: await pagination.hasNext,
+    hasNextPage: await pagination.hasNextPage,
   }));
 }
 
@@ -70,9 +70,9 @@ describe("testsuite of page-paginator", () => {
 
     const pagination = await paginator.paginate(repoUsers.createQueryBuilder());
     expect(pagination).toEqual({
-      count: 6,
+      totalCount: 6,
       nodes: [nodes[5], nodes[4], nodes[3], nodes[2], nodes[1], nodes[0]],
-      hasNext: false,
+      hasNextPage: false,
     });
   });
 
@@ -99,9 +99,9 @@ describe("testsuite of page-paginator", () => {
 
     const pagination = await paginator.paginate(repoUsers.createQueryBuilder());
     expect(pagination).toEqual({
-      count: 6,
+      totalCount: 6,
       nodes: [nodes[5], nodes[4], nodes[3]],
-      hasNext: true,
+      hasNextPage: true,
     });
 
     const paginationNext = await paginator.paginate(
@@ -109,9 +109,9 @@ describe("testsuite of page-paginator", () => {
       { page: 2 },
     );
     expect(paginationNext).toEqual({
-      count: 6,
+      totalCount: 6,
       nodes: [nodes[2], nodes[1], nodes[0]],
-      hasNext: false,
+      hasNextPage: false,
     });
 
     const paginationNextNext = await paginator.paginate(
@@ -119,9 +119,9 @@ describe("testsuite of page-paginator", () => {
       { page: 3 },
     );
     expect(paginationNextNext).toEqual({
-      count: 6,
+      totalCount: 6,
       nodes: [],
-      hasNext: false,
+      hasNextPage: false,
     });
   });
 
@@ -147,9 +147,9 @@ describe("testsuite of page-paginator", () => {
       repoUsers.createQueryBuilder(),
     );
     expect(pagination1).toEqual({
-      count: 6,
+      totalCount: 6,
       nodes: [nodes[2], nodes[4], nodes[1], nodes[5], nodes[3], nodes[0]],
-      hasNext: false,
+      hasNextPage: false,
     });
 
     const pagination2 = await paginator.paginate(
@@ -157,9 +157,9 @@ describe("testsuite of page-paginator", () => {
       { take: 2 },
     );
     expect(pagination2).toEqual({
-      count: 6,
+      totalCount: 6,
       nodes: [nodes[2], nodes[4]],
-      hasNext: true,
+      hasNextPage: true,
     });
 
     const pagination2Next = await paginator.paginate(
@@ -167,9 +167,9 @@ describe("testsuite of page-paginator", () => {
       { take: 2, page: 2 },
     );
     expect(pagination2Next).toEqual({
-      count: 6,
+      totalCount: 6,
       nodes: [nodes[1], nodes[5]],
-      hasNext: true,
+      hasNextPage: true,
     });
 
     const pagination2NextNext = await paginator.paginate(
@@ -177,9 +177,9 @@ describe("testsuite of page-paginator", () => {
       { take: 2, page: 3 },
     );
     expect(pagination2NextNext).toEqual({
-      count: 6,
+      totalCount: 6,
       nodes: [nodes[3], nodes[0]],
-      hasNext: false,
+      hasNextPage: false,
     });
   });
 
@@ -207,9 +207,9 @@ describe("testsuite of page-paginator", () => {
       paginator.promisePaginate(repoUsers.createQueryBuilder()),
     );
     expect(pagination).toEqual({
-      count: 6,
+      totalCount: 6,
       nodes: [nodes[5], nodes[4], nodes[3], nodes[2], nodes[1], nodes[0]],
-      hasNext: false,
+      hasNextPage: false,
     });
   });
 
@@ -238,27 +238,27 @@ describe("testsuite of page-paginator", () => {
       paginator.promisePaginate(repoUsers.createQueryBuilder()),
     );
     expect(pagination).toEqual({
-      count: 6,
+      totalCount: 6,
       nodes: [nodes[5], nodes[4], nodes[3]],
-      hasNext: true,
+      hasNextPage: true,
     });
 
     const paginationNext = await testPromisePaginationAndResolve(
       paginator.promisePaginate(repoUsers.createQueryBuilder(), { page: 2 }),
     );
     expect(paginationNext).toEqual({
-      count: 6,
+      totalCount: 6,
       nodes: [nodes[2], nodes[1], nodes[0]],
-      hasNext: false,
+      hasNextPage: false,
     });
 
     const paginationNextNext = await testPromisePaginationAndResolve(
       paginator.promisePaginate(repoUsers.createQueryBuilder(), { page: 3 }),
     );
     expect(paginationNextNext).toEqual({
-      count: 6,
+      totalCount: 6,
       nodes: [],
-      hasNext: false,
+      hasNextPage: false,
     });
   });
 
@@ -284,18 +284,18 @@ describe("testsuite of page-paginator", () => {
       paginator.promisePaginate(repoUsers.createQueryBuilder()),
     );
     expect(pagination1).toEqual({
-      count: 6,
+      totalCount: 6,
       nodes: [nodes[2], nodes[4], nodes[1], nodes[5], nodes[3], nodes[0]],
-      hasNext: false,
+      hasNextPage: false,
     });
 
     const pagination2 = await testPromisePaginationAndResolve(
       paginator.promisePaginate(repoUsers.createQueryBuilder(), { take: 2 }),
     );
     expect(pagination2).toEqual({
-      count: 6,
+      totalCount: 6,
       nodes: [nodes[2], nodes[4]],
-      hasNext: true,
+      hasNextPage: true,
     });
 
     const pagination2Next = await testPromisePaginationAndResolve(
@@ -305,9 +305,9 @@ describe("testsuite of page-paginator", () => {
       }),
     );
     expect(pagination2Next).toEqual({
-      count: 6,
+      totalCount: 6,
       nodes: [nodes[1], nodes[5]],
-      hasNext: true,
+      hasNextPage: true,
     });
 
     const pagination2NextNext = await testPromisePaginationAndResolve(
@@ -317,9 +317,9 @@ describe("testsuite of page-paginator", () => {
       }),
     );
     expect(pagination2NextNext).toEqual({
-      count: 6,
+      totalCount: 6,
       nodes: [nodes[3], nodes[0]],
-      hasNext: false,
+      hasNextPage: false,
     });
   });
 });
