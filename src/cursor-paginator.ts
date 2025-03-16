@@ -37,7 +37,7 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
   private _transformer: CursorTransformer<TEntity>;
 
   constructor(
-    public entity: ObjectType<TEntity>,
+    public readonly entity: ObjectType<TEntity>,
     { orderBy, transformer }: CursorPaginatorParams<TEntity>
   ) {
     this._orders = normalizeOrderBy(orderBy);
@@ -49,15 +49,13 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
     params: CursorPaginatorPaginateParams = {},
     isRaw = false
   ): Promise<CursorPagination<TEntity>> {
-    // TODO move what is possible to the constructor
-    // (getting metadata, etc.)
-
     const take = params.limit;
     
     // a copy of the query builder without "limit", "where" and "order by"
     // will be used to get the total count
     const qbForCount = new SelectQueryBuilder(qb);
     
+    // compute helper values
     const directionIsProvided = !!params.pageCursor;
     const cursorTemp: string | null = params.pageCursor || null;
     const directionalCursor = cursorTemp ? this._parseCursor(cursorTemp) : null;
