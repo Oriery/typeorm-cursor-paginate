@@ -107,7 +107,6 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
       nodes,
       hasPrevPage: directionIsNext
         // if a cursor was provided, assume that there is a page in the direction we came from
-        // TODO: fix that, do not assume
         ? directionIsProvided
         : hasPageInThePrimaryDirection,
       hasNextPage: directionIsNext
@@ -170,8 +169,6 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
     return (isForNextPage ? 'next:' : 'prev:') + this._transformer.stringify(cursor);
   }
 
-  // TODO: don't allow cursor to have extra properties (which are not in the orderBy)
-  // TODO: force cursor to have all properties in the orderBy
   private _parseCursor(cursorString: string): DirectionalCursor<TEntity> {
     let rawCursor = '';
     let isNext = false;
@@ -183,9 +180,38 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
     } else {
       throw new Error('Cursor string must start with "next:" or "prev:"');
     }
+    const cursor = this._transformer.parse(rawCursor);
+
+    this._validateCursor(cursor);
+
     return {
-      cursor: this._transformer.parse(rawCursor),
+      cursor,
       direction: isNext ? 'next' : 'prev',
     };
+  }
+
+  /**
+   * Checks that all properties in the cursor are in the orderBy and
+   * that all properties in the orderBy are in the cursor.
+   * Also checks that no property in the cursor is undefined.
+   */
+  private _validateCursor(
+    cursor: Cursor<TEntity>,
+  ) {
+    const cursorKeys = Object.keys(cursor) as Array<keyof TEntity>;
+    const orderByKeys = this._orders.map(([key, _]) => key) as Array<keyof TEntity>;
+
+    if (cursorKeys.length !== orderByKeys.length) {
+      throw new Error(`Cursor must have ${orderByKeys.length} properties`);
+    }
+
+    for (const key of cursorKeys) {
+      if (!orderByKeys.includes(key)) {
+        throw new Error(`Cursor has extra property ${String(key)}`);
+      }
+      if (cursor[key] === undefined) {
+        throw new Error(`Cursor property ${String(key)} is undefined`);
+      }
+    }
   }
 }
