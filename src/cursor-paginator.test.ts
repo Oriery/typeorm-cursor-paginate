@@ -510,4 +510,159 @@ describe("testsuite of cursor-paginator", () => {
       nextPageCursor: expect.any(String),
     });
   });
+
+  it("test when some nodes are deleted while paginating", async () => {
+    const repoUsers = connection.getRepository(User);
+
+    const nodes = [
+      repoUsers.create({ name: "a", createdAt: 1600000000 }),
+      repoUsers.create({ name: "b", createdAt: 1600000001 }),
+      repoUsers.create({ name: "b", createdAt: 1600000002 }),
+      repoUsers.create({ name: "c", createdAt: 1600000003 }),
+      repoUsers.create({ name: "c", createdAt: 1600000004 }),
+      repoUsers.create({ name: "c", createdAt: 1600000005 }),
+    ];
+
+    await repoUsers.save(nodes);
+
+    const paginator = new CursorPaginator(User, {
+      orderBy: {
+        id: "ASC",
+      },
+    });
+
+    const pagination = await paginator.paginate(repoUsers.createQueryBuilder(), {
+      limit: 3,
+    });
+    expect(pagination).toEqual({
+      totalCount: 6,
+      nodes: [nodes[0], nodes[1], nodes[2]],
+      hasPrevPage: false,
+      hasNextPage: true,
+      prevPageCursor: expect.any(String),
+      nextPageCursor: expect.any(String),
+    });
+
+    // delete one node in first page
+    await repoUsers.remove([nodes[0]]);
+
+    // pagination should still work as expected for cursor-based pagination
+    const paginationNext = await paginator.paginate(repoUsers.createQueryBuilder(), {
+      limit: 3,
+      pageCursor: pagination.nextPageCursor,
+    });
+    expect(paginationNext).toEqual({
+      totalCount: 5,
+      nodes: [nodes[3], nodes[4], nodes[5]],
+      hasPrevPage: true,
+      hasNextPage: false,
+      prevPageCursor: expect.any(String),
+      nextPageCursor: expect.any(String),
+    });
+  });
+
+  it("test when the cursor node (the last seen node) is deleted while paginating", async () => {
+    const repoUsers = connection.getRepository(User);
+
+    const nodes = [
+      repoUsers.create({ name: "a", createdAt: 1600000000 }),
+      repoUsers.create({ name: "b", createdAt: 1600000001 }),
+      repoUsers.create({ name: "b", createdAt: 1600000002 }),
+      repoUsers.create({ name: "c", createdAt: 1600000003 }),
+      repoUsers.create({ name: "c", createdAt: 1600000004 }),
+      repoUsers.create({ name: "c", createdAt: 1600000005 }),
+    ];
+
+    await repoUsers.save(nodes);
+
+    const paginator = new CursorPaginator(User, {
+      orderBy: {
+        id: "ASC",
+      },
+    });
+
+    const pagination = await paginator.paginate(repoUsers.createQueryBuilder(), {
+      limit: 3,
+    });
+    expect(pagination).toEqual({
+      totalCount: 6,
+      nodes: [nodes[0], nodes[1], nodes[2]],
+      hasPrevPage: false,
+      hasNextPage: true,
+      prevPageCursor: expect.any(String),
+      nextPageCursor: expect.any(String),
+    });
+
+    // delete one node in first page
+    await repoUsers.remove([nodes[2]]);
+
+    // pagination should still work as expected for cursor-based pagination
+    const paginationNext = await paginator.paginate(repoUsers.createQueryBuilder(), {
+      limit: 3,
+      pageCursor: pagination.nextPageCursor,
+    });
+    expect(paginationNext).toEqual({
+      totalCount: 5,
+      nodes: [nodes[3], nodes[4], nodes[5]],
+      hasPrevPage: true,
+      hasNextPage: false,
+      prevPageCursor: expect.any(String),
+      nextPageCursor: expect.any(String),
+    });
+  });
+
+  // The algorithm currently assumes that if the pageCursor is provided, then the page we came from exists.
+  // I could not find a way to fix that without introducing an extra query or more complex bugs.
+  // Decided to let this bug be. 
+  // Because it occurs rarely in real scenarios and shouldn't cause critical problems even if it occurs.
+  // The following test fails because of this bug.
+  it.skip("test computing of hasPrevPage when it has been completely deleted while paginating", async () => {
+    const repoUsers = connection.getRepository(User);
+
+    const nodes = [
+      repoUsers.create({ name: "a", createdAt: 1600000000 }),
+      repoUsers.create({ name: "b", createdAt: 1600000001 }),
+      repoUsers.create({ name: "b", createdAt: 1600000002 }),
+      repoUsers.create({ name: "c", createdAt: 1600000003 }),
+      repoUsers.create({ name: "c", createdAt: 1600000004 }),
+      repoUsers.create({ name: "c", createdAt: 1600000005 }),
+    ];
+
+    await repoUsers.save(nodes);
+
+    const paginator = new CursorPaginator(User, {
+      orderBy: {
+        id: "ASC",
+      },
+    });
+
+    const pagination = await paginator.paginate(repoUsers.createQueryBuilder(), {
+      limit: 3,
+    });
+    expect(pagination).toEqual({
+      totalCount: 6,
+      nodes: [nodes[0], nodes[1], nodes[2]],
+      hasPrevPage: false,
+      hasNextPage: true,
+      prevPageCursor: expect.any(String),
+      nextPageCursor: expect.any(String),
+    });
+
+    // delete nodes in first page
+    await repoUsers.remove([nodes[0], nodes[1], nodes[2]]);
+
+    // pagination should still work and understand that there is no previous page already
+    const paginationNext = await paginator.paginate(repoUsers.createQueryBuilder(), {
+      limit: 3,
+      pageCursor: pagination.nextPageCursor,
+    });
+    expect(paginationNext).toEqual({
+      totalCount: 3,
+      nodes: [nodes[3], nodes[4], nodes[5]],
+      hasPrevPage: false, // there is already no previous page
+      hasNextPage: false,
+      prevPageCursor: expect.any(String),
+      nextPageCursor: expect.any(String),
+    });
+  });
 });

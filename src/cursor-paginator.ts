@@ -78,18 +78,26 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
       );
     }
 
-    let hasPageInThePrimaryDirection = false;
     const query = new SelectQueryBuilder<TEntity>(qb).take(take && take + 1);
     let [nodes, totalCount] = await Promise.all([
       isRaw ? query.getRawMany<TEntity>() : query.getMany(),
       qbForCount.getCount(),
     ]);
-
-    if (take && nodes.length > take) {
+    
+    let hasPageInThePrimaryDirection = false;
+    if (!take) {
+      // no pagination
+    } else if (nodes.length === take + 1) {
+      // the next page exists
       hasPageInThePrimaryDirection = true;
+      nodes.pop();
+    } else if (nodes.length < take + 1) {
+      // the next page doesn't exist
+    } else {
+      throw new Error(`Got unexpected number of nodes from executing query: ${nodes.length} . ` + 
+        `Expected from ${0} to ${take ? take + 1 : nodes.length}`);
     }
 
-    nodes = nodes.slice(0, take);
     if (!directionIsNext) {
       nodes.reverse();
     }
@@ -162,6 +170,8 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
     return (isForNextPage ? 'next:' : 'prev:') + this._transformer.stringify(cursor);
   }
 
+  // TODO: don't allow cursor to have extra properties (which are not in the orderBy)
+  // TODO: force cursor to have all properties in the orderBy
   private _parseCursor(cursorString: string): DirectionalCursor<TEntity> {
     let rawCursor = '';
     let isNext = false;
