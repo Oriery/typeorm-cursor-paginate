@@ -2,7 +2,6 @@ import {
   SelectQueryBuilder,
   ObjectType,
   ObjectLiteral,
-  KeysOfAType,
 } from "typeorm";
 
 import {
@@ -10,8 +9,6 @@ import {
   Cursor,
   OrderBy,
   CursorTransformer,
-  Nullable,
-  Take,
   DirectionalCursor,
 } from "./interfaces/paginator";
 import { Base64Transformer } from "./transformers/base64-transformer";
@@ -19,35 +16,74 @@ import { normalizeOrderBy } from "./utils/normalizeOrderBy";
 
 export interface CursorPaginatorParams<TEntity extends ObjectLiteral> {
   /**
-   * columns to order by.
-   * Caution: the set of provided columns must be unique in database,
-   *  otherwise entries might be skipped/duplicated.
+   * Columns to order by.
+   * 
+   * CAUTION: the set of provided columns must be unique in database,
+   *  otherwise entries might be skipped/duplicated. This rule is not enforced
+   *  by the library, so be careful.
    */
   orderBy: OrderBy<TEntity> | OrderBy<TEntity>[];
+  /**
+   * Transformer to use for the cursor stringification and parsing.
+   *
+   * By default, a `Base64Transformer` is used.
+   * 
+   * There is also a predefined `JsonTransformer` you can use.
+   */
   transformer?: CursorTransformer<TEntity> | null;
 }
 
 export interface CursorPaginatorPaginateParams {
+  /**
+   * The cursor to the next or previous page.
+   *
+   * Use `prevPageCursor` or `nextPageCursor` which you got from
+   * the previous page.
+   */
   pageCursor?: string | null;
+  /**
+   * The maximum number of items to return in the current page.
+   *
+   * If not provided, will return all remaining items.
+   */
   limit?: number;
 }
 
+/**
+ * A class that implements a cursor-based pagination for TypeORM.
+ *
+ * @template TEntity The type of the entity that is being selected from the database.
+ */
 export class CursorPaginator<TEntity extends ObjectLiteral> {
   private _orders: [string, boolean][] = [];
   private _transformer: CursorTransformer<TEntity>;
 
+  /**
+   * Creates a new instance of the `CursorPaginator` class.
+   *
+   * @param entity The entity type to paginate.
+   * @param options The options for the paginator.
+   */
   constructor(
     public readonly entity: ObjectType<TEntity>,
-    { orderBy, transformer }: CursorPaginatorParams<TEntity>,
+    options: CursorPaginatorParams<TEntity>,
   ) {
+    const { orderBy, transformer } = options;
     this._orders = normalizeOrderBy(orderBy);
     this._transformer = transformer ?? new Base64Transformer();
   }
 
+  /**
+   * Paginate the results of a query builder using the directional cursor.
+   *
+   * @param qb The query builder to paginate.
+   * @param params The pagination parameters.
+   * @param isRaw If true, the raw results will be returned.
+   */
   async paginate(
     qb: SelectQueryBuilder<TEntity>,
     params: CursorPaginatorPaginateParams = {},
-    isRaw = false,
+    isRaw = false
   ): Promise<CursorPagination<TEntity>> {
     const take = params.limit;
 
@@ -75,7 +111,7 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
     for (const [key, asc] of this._orders) {
       qb.addOrderBy(
         `${qb.alias}.${key}`,
-        asc === directionIsNext ? "ASC" : "DESC",
+        asc === directionIsNext ? "ASC" : "DESC"
       );
     }
 
@@ -97,7 +133,7 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
     } else {
       throw new Error(
         `Got unexpected number of nodes from executing query: ${nodes.length} . ` +
-          `Expected from ${0} to ${take ? take + 1 : nodes.length}`,
+          `Expected from ${0} to ${take ? take + 1 : nodes.length}`
       );
     }
 
@@ -123,7 +159,7 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
         nodes.length > 0
           ? this._stringifyCursor(
               this._createCursor(nodes[nodes.length - 1]),
-              true,
+              true
             )
           : null,
     };
@@ -132,7 +168,7 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
   private _applyWhereQuery(
     qb: SelectQueryBuilder<TEntity>,
     cursor: Cursor<TEntity>,
-    isNext: boolean,
+    isNext: boolean
   ) {
     const metadata = qb.expressionMap.mainAlias?.metadata;
 
@@ -152,7 +188,7 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
     for (const [key, asc] of this._orders) {
       const columnName = `${qb.alias}.${key}`;
       queryParts.push(
-        `(${queryPrefix}${columnName} ${asc === isNext ? ">" : "<"} :cursor__${key})`,
+        `(${queryPrefix}${columnName} ${asc === isNext ? ">" : "<"} :cursor__${key})`
       );
       queryPrefix += `${columnName} = :cursor__${key} AND `;
 
@@ -160,7 +196,7 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
       queryParams[`cursor__${key}`] = column
         ? qb.connection.driver.preparePersistentValue(
             cursor[key as keyof TEntity],
-            column,
+            column
           )
         : cursor[key as keyof TEntity];
     }
@@ -178,7 +214,7 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
 
   private _stringifyCursor(
     cursor: Cursor<TEntity>,
-    isForNextPage: boolean,
+    isForNextPage: boolean
   ): string {
     return (
       (isForNextPage ? "next:" : "prev:") + this._transformer.stringify(cursor)

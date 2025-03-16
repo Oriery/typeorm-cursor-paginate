@@ -1,15 +1,5 @@
 import { ObjectLiteral } from "typeorm";
 
-export type Nullable<T> = {
-  [P in keyof T]?: T[P] | null;
-};
-
-export interface Take {
-  default: number;
-  min: number;
-  max: number;
-}
-
 export type Order = "ASC" | "DESC";
 
 export type OrderBy<TEntity extends ObjectLiteral> = {
@@ -27,26 +17,39 @@ export type DirectionalCursor<TEntity extends ObjectLiteral> = {
 
 export interface CursorPagination<TEntity extends ObjectLiteral> {
   readonly totalCount: number;
-  readonly nodes: TEntity[];
+  /**
+   * Indicates whether a previous page is available.
+   *
+   * Note: In rare scenarios, this value may be `true` even when no previous page exists. This can occur if
+   * the current page was retrieved using a cursor, but all nodes prior to that cursor have been deleted.
+   */
   readonly hasPrevPage: boolean;
+  /**
+   * Indicates whether a next page is available.
+   *
+   * Note: In rare scenarios, this value may be `true` even when no next page exists. This can occur if
+   * the current page was retrieved using a cursor, but all nodes after that cursor have been deleted.
+   */
   readonly hasNextPage: boolean;
+  /**
+   * The cursor to the previous page.
+   * 
+   * It is a string even if hasPrevPage is false. It is null only if no nodes are found in the current page.
+   */
   readonly prevPageCursor: string | null;
+  /**
+   * The cursor to the next page.
+   * 
+   * It is a string even if hasNextPage is false. It is null only if no nodes are found in the current page.
+   */
   readonly nextPageCursor: string | null;
+  /**
+   * The list of nodes in the current page.
+   */
+  readonly nodes: TEntity[];
 }
 
 export interface CursorTransformer<TEntity extends ObjectLiteral> {
   parse(text: string): Cursor<TEntity>;
   stringify(cursor: Cursor<TEntity>): string;
-}
-
-export interface PagePagination<TEntity extends ObjectLiteral> {
-  readonly totalCount: number;
-  readonly nodes: TEntity[];
-  readonly hasNextPage: boolean;
-}
-
-export interface PromisePagePagination<TEntity extends ObjectLiteral> {
-  readonly totalCount: Promise<number>;
-  readonly nodes: Promise<TEntity[]>;
-  readonly hasNextPage: Promise<boolean>;
 }

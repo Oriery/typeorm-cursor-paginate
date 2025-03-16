@@ -129,6 +129,7 @@ Here are the key differences:
 - **Can provide different directions for different columns in orderBy**: In the original package, all columns in the `orderBy` array had to have the same direction. This package allows to provide different directions for different columns.
 - **Directional cursors**: see above
 - **No default "limit"**: see above
+- **Custom transformation of the cursor**: In the current package, custom transformers to stringify and parse the cursor can be provided. This feature comes from the original package (`typeorm-paginator`).
 
 ## Contributing
 
