@@ -766,4 +766,36 @@ describe("testsuite of cursor-paginator", () => {
     });
     await expect(pagination).rejects.toThrow();
   });
+
+  it("should throw when limit is 0", async () => {
+    const repoUsers = dataSource.getRepository(User);
+
+    const paginator = new CursorPaginator(User, {
+      orderBy: {
+        id: "ASC",
+      },
+      transformer: new JsonTransformer(),
+    });
+
+    const pagination = paginator.paginate(repoUsers.createQueryBuilder(), {
+      limit: 0,
+    });
+    await expect(pagination).rejects.toThrow();
+  });
+
+  it("should throw when limit is negative", async () => {
+    const repoUsers = dataSource.getRepository(User);
+
+    const paginator = new CursorPaginator(User, {
+      orderBy: {
+        id: "ASC",
+      },
+      transformer: new JsonTransformer(),
+    });
+
+    const pagination = paginator.paginate(repoUsers.createQueryBuilder(), {
+      limit: -1,
+    });
+    await expect(pagination).rejects.toThrow();
+  });
 });

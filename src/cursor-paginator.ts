@@ -51,6 +51,11 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
   ): Promise<CursorPagination<TEntity>> {
     const take = params.limit;
 
+    // limit must not be 0 or negative
+    if (take !== undefined && take < 1) {
+      throw new Error("Limit must be greater than 0 or undefined");
+    }
+
     // a copy of the query builder without "limit", "where" and "order by"
     // will be used to get the total count
     const qbForCount = new SelectQueryBuilder(qb);
