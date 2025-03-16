@@ -33,13 +33,13 @@ export interface CursorPagination<TEntity extends ObjectLiteral> {
   readonly hasNextPage: boolean;
   /**
    * The cursor to the previous page.
-   * 
+   *
    * It is a string even if hasPrevPage is false. It is null only if no nodes are found in the current page.
    */
   readonly prevPageCursor: string | null;
   /**
    * The cursor to the next page.
-   * 
+   *
    * It is a string even if hasNextPage is false. It is null only if no nodes are found in the current page.
    */
   readonly nextPageCursor: string | null;
