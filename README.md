@@ -1,9 +1,5 @@
 # TypeORM Paginator
 
-// TODO update links to point to the new repo
-// TODO write that this is a fork of the original repo
-// TODO write description with important original features
-
 <p>
   <a href="https://npmcharts.com/compare/typeorm-cursor-paginate?minimal=true"><img alt="Downloads" src="https://img.shields.io/npm/dt/typeorm-cursor-paginate.svg?style=flat-square" /></a>
   <a href="https://www.npmjs.com/package/typeorm-cursor-paginate"><img alt="License" src="https://img.shields.io/npm/l/typeorm-cursor-paginate.svg?style=flat-square" /></a>
