@@ -1,8 +1,6 @@
 import {
   Column,
-  // TODO don't use deprecated stuff (Connection, createConnection)
-  Connection,
-  createConnection,
+  DataSource,
   Entity,
   FindOperator,
   PrimaryGeneratedColumn,
@@ -66,23 +64,24 @@ class User {
 }
 
 describe("testsuite of cursor-paginator", () => {
-  let connection: Connection;
+  let dataSource: DataSource;
 
   beforeAll(async () => {
-    connection = await createConnection({
+    dataSource = new DataSource({
       type: "sqlite",
       database: ":memory:",
       entities: [User],
       synchronize: true,
     });
+    await dataSource.initialize();
   });
 
   beforeEach(async () => {
-    await connection.getRepository(User).clear();
+    await dataSource.getRepository(User).clear();
   });
 
   it("test paginate default (no limit)", async () => {
-    const repoUsers = connection.getRepository(User);
+    const repoUsers = dataSource.getRepository(User);
 
     const nodes = [
       repoUsers.create({ name: "a", createdAt: 1600000000 }),
@@ -113,7 +112,7 @@ describe("testsuite of cursor-paginator", () => {
   });
 
   it("test cursor paginate by single-order", async () => {
-    const repoUsers = connection.getRepository(User);
+    const repoUsers = dataSource.getRepository(User);
 
     const nodes = [
       repoUsers.create({ name: "a", createdAt: 1600000000 }),
@@ -198,7 +197,7 @@ describe("testsuite of cursor-paginator", () => {
   });
 
   it("test cursor paginate by multi-orders", async () => {
-    const repoUsers = connection.getRepository(User);
+    const repoUsers = dataSource.getRepository(User);
 
     const nodes = [
       repoUsers.create({ name: "c", createdAt: 1600000000 }),
@@ -281,7 +280,7 @@ describe("testsuite of cursor-paginator", () => {
   });
 
   it("test cursor paginate with TypeORM's transformer for field", async () => {
-    const repoUsers = connection.getRepository(User);
+    const repoUsers = dataSource.getRepository(User);
 
     const nodes = [
       repoUsers.create({ name: "a", createdAt: 1600000000 }),
@@ -366,7 +365,7 @@ describe("testsuite of cursor-paginator", () => {
   });
 
   it("not enough items for full page", async () => {
-    const repoUsers = connection.getRepository(User);
+    const repoUsers = dataSource.getRepository(User);
 
     const nodes = [
       repoUsers.create({ name: "a", createdAt: 1600000000 }),
@@ -395,7 +394,7 @@ describe("testsuite of cursor-paginator", () => {
   });
 
   it("test SQL injection into cursor: test 'id'", async () => {
-    const repoUsers = connection.getRepository(User);
+    const repoUsers = dataSource.getRepository(User);
 
     const nodes = [
       repoUsers.create({ name: "a", createdAt: 1600000000 }),
@@ -434,7 +433,7 @@ describe("testsuite of cursor-paginator", () => {
   });
 
   it("test SQL injection into cursor: test 'name'", async () => {
-    const repoUsers = connection.getRepository(User);
+    const repoUsers = dataSource.getRepository(User);
 
     const nodes = [
       repoUsers.create({ name: "a", createdAt: 1600000000 }),
@@ -473,7 +472,7 @@ describe("testsuite of cursor-paginator", () => {
   });
 
   it("test SQL injection into cursor: test 'name' without extra quotes", async () => {
-    const repoUsers = connection.getRepository(User);
+    const repoUsers = dataSource.getRepository(User);
 
     const nodes = [
       repoUsers.create({ name: "a", createdAt: 1600000000 }),
@@ -512,7 +511,7 @@ describe("testsuite of cursor-paginator", () => {
   });
 
   it("test when some nodes are deleted while paginating", async () => {
-    const repoUsers = connection.getRepository(User);
+    const repoUsers = dataSource.getRepository(User);
 
     const nodes = [
       repoUsers.create({ name: "a", createdAt: 1600000000 }),
@@ -562,7 +561,7 @@ describe("testsuite of cursor-paginator", () => {
   });
 
   it("test when the cursor node (the last seen node) is deleted while paginating", async () => {
-    const repoUsers = connection.getRepository(User);
+    const repoUsers = dataSource.getRepository(User);
 
     const nodes = [
       repoUsers.create({ name: "a", createdAt: 1600000000 }),
@@ -617,7 +616,7 @@ describe("testsuite of cursor-paginator", () => {
   // Because it occurs rarely in real scenarios and shouldn't cause critical problems even if it occurs.
   // The following test fails because of this bug.
   it.skip("test computing of hasPrevPage when it has been completely deleted while paginating", async () => {
-    const repoUsers = connection.getRepository(User);
+    const repoUsers = dataSource.getRepository(User);
 
     const nodes = [
       repoUsers.create({ name: "a", createdAt: 1600000000 }),
