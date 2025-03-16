@@ -1,6 +1,6 @@
 {
   "name": "typeorm-cursor-paginate",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "Cursor-based pagination with directional cursors.",
   "keywords": [
     "directional",
@@ -19,7 +19,7 @@
     "type": "git",
     "url": "https://github.com/Oriery/typeorm-cursor-paginate"
   },
-  "main": "lib/index.js",
+  "main": "lib/src/index.js",
   "types": "lib/index.d.ts",
   "scripts": {
     "prepack": "npm run test && npm run build",
