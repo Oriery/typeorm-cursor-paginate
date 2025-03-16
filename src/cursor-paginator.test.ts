@@ -16,7 +16,12 @@ function timestampTransformFrom(value: any): any {
       timestampTransformFrom((value as any)._value),
     );
   }
-  if (typeof value === "function" || typeof value === "undefined" || value === null || typeof value === "number") {
+  if (
+    typeof value === "function" ||
+    typeof value === "undefined" ||
+    value === null ||
+    typeof value === "number"
+  ) {
     return value;
   }
   return ~~(new Date(value).getTime() / 1000);
@@ -132,9 +137,12 @@ describe("testsuite of cursor-paginator", () => {
       },
     });
 
-    const pagination = await paginator.paginate(repoUsers.createQueryBuilder(), {
-      limit: 3,
-    });
+    const pagination = await paginator.paginate(
+      repoUsers.createQueryBuilder(),
+      {
+        limit: 3,
+      },
+    );
     expect(pagination).toEqual({
       totalCount: 6,
       nodes: [nodes[5], nodes[4], nodes[3]],
@@ -300,9 +308,12 @@ describe("testsuite of cursor-paginator", () => {
       },
     });
 
-    const pagination = await paginator.paginate(repoUsers.createQueryBuilder(), {
-      limit: 3,
-    });
+    const pagination = await paginator.paginate(
+      repoUsers.createQueryBuilder(),
+      {
+        limit: 3,
+      },
+    );
     expect(pagination).toEqual({
       totalCount: 6,
       nodes: [nodes[2], nodes[4], nodes[1]],
@@ -381,9 +392,12 @@ describe("testsuite of cursor-paginator", () => {
       },
     });
 
-    const pagination = await paginator.paginate(repoUsers.createQueryBuilder(), {
-      limit: 3,
-    });
+    const pagination = await paginator.paginate(
+      repoUsers.createQueryBuilder(),
+      {
+        limit: 3,
+      },
+    );
     expect(pagination).toEqual({
       totalCount: 2,
       nodes: [nodes[0], nodes[1]],
@@ -415,14 +429,20 @@ describe("testsuite of cursor-paginator", () => {
       transformer: new JsonTransformer(),
     });
 
-    const pagination = await paginator.paginate(repoUsers.createQueryBuilder(), {
-      limit: 3,
-      pageCursor: 'next:{"id":"\\";;;;;;DROP TABLE Users;\\""}',
-    });
+    const pagination = await paginator.paginate(
+      repoUsers.createQueryBuilder(),
+      {
+        limit: 3,
+        pageCursor: 'next:{"id":"\\";;;;;;DROP TABLE Users;\\""}',
+      },
+    );
     // should not have dropped the table
-    const pagination2 = await paginator.paginate(repoUsers.createQueryBuilder(), {
-      limit: 1,
-    });
+    const pagination2 = await paginator.paginate(
+      repoUsers.createQueryBuilder(),
+      {
+        limit: 1,
+      },
+    );
     expect(pagination2).toEqual({
       totalCount: 6,
       nodes: [nodes[0]],
@@ -454,14 +474,20 @@ describe("testsuite of cursor-paginator", () => {
       transformer: new JsonTransformer(),
     });
 
-    const pagination = await paginator.paginate(repoUsers.createQueryBuilder(), {
-      limit: 3,
-      pageCursor: 'next:{"name":"\\";;;;;;DROP TABLE Users;\\""}',
-    });
+    const pagination = await paginator.paginate(
+      repoUsers.createQueryBuilder(),
+      {
+        limit: 3,
+        pageCursor: 'next:{"name":"\\";;;;;;DROP TABLE Users;\\""}',
+      },
+    );
     // should not have dropped the table
-    const pagination2 = await paginator.paginate(repoUsers.createQueryBuilder(), {
-      limit: 1,
-    });
+    const pagination2 = await paginator.paginate(
+      repoUsers.createQueryBuilder(),
+      {
+        limit: 1,
+      },
+    );
     expect(pagination2).toEqual({
       totalCount: 6,
       nodes: [nodes[0]],
@@ -493,14 +519,20 @@ describe("testsuite of cursor-paginator", () => {
       transformer: new JsonTransformer(),
     });
 
-    const pagination = await paginator.paginate(repoUsers.createQueryBuilder(), {
-      limit: 3,
-      pageCursor: 'next:{"name":";;;;;;DROP TABLE Users;"}',
-    });
+    const pagination = await paginator.paginate(
+      repoUsers.createQueryBuilder(),
+      {
+        limit: 3,
+        pageCursor: 'next:{"name":";;;;;;DROP TABLE Users;"}',
+      },
+    );
     // should not have dropped the table
-    const pagination2 = await paginator.paginate(repoUsers.createQueryBuilder(), {
-      limit: 1,
-    });
+    const pagination2 = await paginator.paginate(
+      repoUsers.createQueryBuilder(),
+      {
+        limit: 1,
+      },
+    );
     expect(pagination2).toEqual({
       totalCount: 6,
       nodes: [nodes[0]],
@@ -531,9 +563,12 @@ describe("testsuite of cursor-paginator", () => {
       },
     });
 
-    const pagination = await paginator.paginate(repoUsers.createQueryBuilder(), {
-      limit: 3,
-    });
+    const pagination = await paginator.paginate(
+      repoUsers.createQueryBuilder(),
+      {
+        limit: 3,
+      },
+    );
     expect(pagination).toEqual({
       totalCount: 6,
       nodes: [nodes[0], nodes[1], nodes[2]],
@@ -547,10 +582,13 @@ describe("testsuite of cursor-paginator", () => {
     await repoUsers.remove([nodes[0]]);
 
     // pagination should still work as expected for cursor-based pagination
-    const paginationNext = await paginator.paginate(repoUsers.createQueryBuilder(), {
-      limit: 3,
-      pageCursor: pagination.nextPageCursor,
-    });
+    const paginationNext = await paginator.paginate(
+      repoUsers.createQueryBuilder(),
+      {
+        limit: 3,
+        pageCursor: pagination.nextPageCursor,
+      },
+    );
     expect(paginationNext).toEqual({
       totalCount: 5,
       nodes: [nodes[3], nodes[4], nodes[5]],
@@ -581,9 +619,12 @@ describe("testsuite of cursor-paginator", () => {
       },
     });
 
-    const pagination = await paginator.paginate(repoUsers.createQueryBuilder(), {
-      limit: 3,
-    });
+    const pagination = await paginator.paginate(
+      repoUsers.createQueryBuilder(),
+      {
+        limit: 3,
+      },
+    );
     expect(pagination).toEqual({
       totalCount: 6,
       nodes: [nodes[0], nodes[1], nodes[2]],
@@ -597,10 +638,13 @@ describe("testsuite of cursor-paginator", () => {
     await repoUsers.remove([nodes[2]]);
 
     // pagination should still work as expected for cursor-based pagination
-    const paginationNext = await paginator.paginate(repoUsers.createQueryBuilder(), {
-      limit: 3,
-      pageCursor: pagination.nextPageCursor,
-    });
+    const paginationNext = await paginator.paginate(
+      repoUsers.createQueryBuilder(),
+      {
+        limit: 3,
+        pageCursor: pagination.nextPageCursor,
+      },
+    );
     expect(paginationNext).toEqual({
       totalCount: 5,
       nodes: [nodes[3], nodes[4], nodes[5]],
@@ -613,7 +657,7 @@ describe("testsuite of cursor-paginator", () => {
 
   // The algorithm currently assumes that if the pageCursor is provided, then the page we came from exists.
   // I could not find a way to fix that without introducing an extra query or more complex bugs.
-  // Decided to let this bug be. 
+  // Decided to let this bug be.
   // Because it occurs rarely in real scenarios and shouldn't cause critical problems even if it occurs.
   // The following test fails because of this bug.
   it.skip("test computing of hasPrevPage when it has been completely deleted while paginating", async () => {
@@ -636,9 +680,12 @@ describe("testsuite of cursor-paginator", () => {
       },
     });
 
-    const pagination = await paginator.paginate(repoUsers.createQueryBuilder(), {
-      limit: 3,
-    });
+    const pagination = await paginator.paginate(
+      repoUsers.createQueryBuilder(),
+      {
+        limit: 3,
+      },
+    );
     expect(pagination).toEqual({
       totalCount: 6,
       nodes: [nodes[0], nodes[1], nodes[2]],
@@ -652,10 +699,13 @@ describe("testsuite of cursor-paginator", () => {
     await repoUsers.remove([nodes[0], nodes[1], nodes[2]]);
 
     // pagination should still work and understand that there is no previous page already
-    const paginationNext = await paginator.paginate(repoUsers.createQueryBuilder(), {
-      limit: 3,
-      pageCursor: pagination.nextPageCursor,
-    });
+    const paginationNext = await paginator.paginate(
+      repoUsers.createQueryBuilder(),
+      {
+        limit: 3,
+        pageCursor: pagination.nextPageCursor,
+      },
+    );
     expect(paginationNext).toEqual({
       totalCount: 3,
       nodes: [nodes[3], nodes[4], nodes[5]],
@@ -695,7 +745,7 @@ describe("testsuite of cursor-paginator", () => {
 
     const pagination = paginator.paginate(repoUsers.createQueryBuilder(), {
       limit: 3,
-      pageCursor: 'next:{}',
+      pageCursor: "next:{}",
     });
     await expect(pagination).rejects.toThrow();
   });
