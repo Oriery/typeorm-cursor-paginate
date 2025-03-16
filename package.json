@@ -1,18 +1,23 @@
 {
-  "name": "typeorm-paginator",
+  "name": "todo-package-name",
   "version": "0.6.2",
-  "description": "TypeORM query builder pagination library.",
+  "description": "Cursor-based pagination with directional cursors.",
   "keywords": [
+    "directional",
+    "cursor",
     "pagination",
+    "cursor-based",
     "paginator",
+    "direction",
+    "paginate",
     "typeorm",
     "typescript"
   ],
-  "author": "Changwan Jun <wan2land@gmail.com>",
+  "author": "Aleksandr Panev <aleksandr.panev.2002@gmail.com>",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git://github.com/wan2land/typeorm-paginator.git"
+    "url": "git://github.com/Oriery/todo-package-name.git"
   },
   "main": "lib/index.js",
   "types": "lib/index.d.ts",

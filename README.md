@@ -1,134 +1,119 @@
 # TypeORM Paginator
 
-<p>
-  <a href="https://github.com/wan2land/typeorm-paginator/actions?query=workflow%3A%22Node.js+CI%22"><img alt="Build" src="https://img.shields.io/github/workflow/status/wan2land/typeorm-paginator/Node.js%20CI?logo=github&style=flat-square" /></a>
-  <a href="https://npmcharts.com/compare/typeorm-paginator?minimal=true"><img alt="Downloads" src="https://img.shields.io/npm/dt/typeorm-paginator.svg?style=flat-square" /></a>
-  <a href="https://www.npmjs.com/package/typeorm-paginator"><img alt="Version" src="https://img.shields.io/npm/v/typeorm-paginator.svg?style=flat-square" /></a>
-  <a href="https://www.npmjs.com/package/typeorm-paginator"><img alt="License" src="https://img.shields.io/npm/l/typeorm-paginator.svg?style=flat-square" /></a>
-  <br />
-  <a href="https://david-dm.org/wan2land/typeorm-paginator"><img alt="dependencies Status" src="https://img.shields.io/david/wan2land/typeorm-paginator.svg?style=flat-square" /></a>
-  <a href="https://david-dm.org/wan2land/typeorm-paginator?type=dev"><img alt="devDependencies Status" src="https://img.shields.io/david/dev/wan2land/typeorm-paginator.svg?style=flat-square" /></a>
-</p>
-
 // TODO update links to point to the new repo
 // TODO write that this is a fork of the original repo
 // TODO write description with important original features
 
-Provides cursor-based pagination. Even if there is a transformer in the column, it works perfectly.
+<p>
+  <a href="https://npmcharts.com/compare/todo-package-name?minimal=true"><img alt="Downloads" src="https://img.shields.io/npm/dt/todo-package-name.svg?style=flat-square" /></a>
+  <a href="https://www.npmjs.com/package/todo-package-name"><img alt="License" src="https://img.shields.io/npm/l/todo-package-name.svg?style=flat-square" /></a>
+</p>
+
+Cursor-based pagination that works with [TypeORM Query Builder](https://typeorm.io/#/select-query-builder). Read about the general idea of cursor-based pagination [here](https://jsonapi.org/profiles/ethanresnick/cursor-pagination/).
+
+This package is a fork of the [typeorm-paginator](https://www.npmjs.com/package/typeorm-paginator) package with some tweaks.
+
+Unlike the original package, this one implements **directional** cursors. Directional cursors store the direction of pagination inside. They allow to provide only one parameter to paginate in any direction.
+
+- [Installation](#installation)
+- [Usage](#usage)
+  - [Configuration](#configuration)
+  - [Paginating Results](#paginating-results)
+    - [Retrieving the First Page](#retrieving-the-first-page)
+    - [Navigating to the Next Page](#navigating-to-the-next-page)
+- [Key differences from the original package](#key-differences-from-the-original-package)
+
 
 ## Installation
 
 ```bash
-npm install typeorm-paginator --save
+npm install todo-package-name --save
 ```
 
 ## Usage
 
-### Cursor-based Pagination
+Start by importing the `CursorPaginator` class:
 
 ```typescript
-import { CursorPaginator } from "typeorm-paginator";
+import { CursorPaginator } from "todo-package-name";
 ```
 
-Single cursor-based pagination.
+### Configuration
 
-```typescript
-const paginator = new CursorPaginator(User, {
-  orderBy: {
-    id: false,
-  },
-});
-
-const pagination = await paginator.paginate(repoUsers.createQueryBuilder());
-
-expect(pagination).toEqual({
-  nodes: [
-    /*
-    User { id: 3 },
-    User { id: 2 },
-    User { id: 1 },
-    */
-  ],
-  hasPrevPage: false,
-  hasNextPage: false,
-  nextPageCursor: expect.any(String),
-  prevPageCursor: expect.any(String),
-});
-```
-
-Multi cursor-based pagination.
+Instantiate the paginator with your target entity and define the ordering strategy. In this example, users are sorted by their `name` in ascending order and by `id` in descending order:
 
 ```typescript
 const paginator = new CursorPaginator(User, {
   orderBy: [
-    { name: true },
-    { id: false },
+    { name: 'ASC' },
+    { id: 'DESC' },
   ],
-})
+});
+```
 
-const result = await paginator.paginate(
-  repoUsers.createQueryBuilder(),
-  { limit: 2 }
-)
-expect(result).toEqual({
+Prepare your query:
+
+```typescript
+const query = repoUsers.createQueryBuilder();
+// you can apply desired "where" conditions to the query
+```
+
+### Paginating Results
+
+#### Retrieving the First Page
+
+Use the paginator to fetch the initial set of results. Here, a limit of 2 items per page is specified:
+
+```typescript
+const firstPageResult = await paginator.paginate(query, { limit: 2 });
+```
+
+Output structure:
+
+```typescript
+{
   nodes: [
-    User { id: 3, name: 'a' },
-    User { id: 5, name: 'b' },
+    User { id: 4, name: 'a' },
+    User { id: 3, name: 'b' },
   ],
   hasPrevPage: false,
   hasNextPage: true,
-  prevPageCursor: expect.any(String),
-  nextPageCursor: expect.any(String),
-})
-
-const resultNext = await paginator.paginate(
-  repoUsers.createQueryBuilder(), 
-  { 
-    limit: 2, 
-    nextPageCursor: result.nextPageCursor 
-  })
-expect(resultNext).toEqual({
-  nodes: [
-    User { id: 2, name: 'b' },
-    User { id: 6, name: 'c' },
-  ],
-  hasPrevPage: true,
-  hasNextPage: true,
-  prevPageCursor: expect.any(String),
-  nextPageCursor: expect.any(String),
-})
-
-const resultNextNext = await paginator.paginate(
-  repoUsers.createQueryBuilder(), 
-  { 
-    limit: 2, 
-    nextPageCursor: resultNext.nextPageCursor 
-  })
-expect(resultNextNext).toEqual({
-  nodes: [
-    User { id: 4, name: 'c' },
-    User { id: 1, name: 'c' },
-  ],
-  hasPrevPage: true,
-  hasNextPage: false,
-  prevPageCursor: expect.any(String),
-  nextPageCursor: expect.any(String),
-})
-
-const resultNextNextPrev = await paginator.paginate(
-  repoUsers.createQueryBuilder(), 
-  { 
-    limit: 2, 
-    prevPageCursor: resultNextNext.prevPageCursor 
-  })
-expect(resultNextNextPrev).toEqual({
-  nodes: [
-    User { id: 2, name: 'b' },
-    User { id: 6, name: 'c' },
-  ],
-  hasPrevPage: true,
-  hasNextPage: true,
-  prevPageCursor: expect.any(String),
-  nextPageCursor: expect.any(String),
-})
+  prevPageCursor: "some-cursor-string",
+  nextPageCursor: "some-cursor-string",
+}
 ```
+
+#### Navigating to the Next Page
+
+To retrieve the next set of results, pass the `nextPageCursor` from the first query:
+
+```typescript
+const secondPageResult = await paginator.paginate(query, { 
+  limit: 2,
+  // Use the nextPageCursor from the previous result
+  pageCursor: firstPageResult.nextPageCursor 
+});
+```
+
+Output structure:
+
+```typescript
+{
+  nodes: [
+    User { id: 1, name: 'c' },
+    User { id: 2, name: 'c' },
+  ],
+  hasPrevPage: true,
+  hasNextPage: true,
+  prevPageCursor: "some-cursor-string",
+  nextPageCursor: "some-cursor-string",
+}
+```
+
+## Key differences from the original package
+
+- **Directional cursors**: In the original package, cursors are not directional. The pagination direction was determined by what argument the cursor is passed to.
+  This package stores the direction of pagination inside the cursor. It allows to provide only one parameter to paginate in any direction.
+- **Type safety**: Added some more type safety to the code. Now the `orderBy` property only accepts keys that are present in the entity.
+- **Removed PageCursor**: The `PageCursor` class was removed. This package is about cursor-based pagination.
+- **No default "limit"**: Original package had a default limit of 20.Now, if the limit is omitted, all results will be returned.
