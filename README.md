@@ -7,7 +7,7 @@
 
 Cursor-based pagination that works with [TypeORM Query Builder](https://typeorm.io/#/select-query-builder). Read about the general idea of cursor-based pagination [here](https://jsonapi.org/profiles/ethanresnick/cursor-pagination/).
 
-This package is a fork of the [typeorm-paginator](https://www.npmjs.com/package/typeorm-paginator) package with some tweaks. See the [Key differences from the original package](#key-differences-from-the-original-package) section for more details.
+This package is a fork of the [typeorm-paginator](https://www.npmjs.com/package/typeorm-paginator) package with some tweaks. See the [Key differences from `typeorm-paginator`](#key-differences-from-typeorm-paginator) section for more details.
 
 The biggest difference is **directional** cursors. Directional cursors store the direction of pagination inside them. They allow to provide only one parameter to paginate in any direction.
 
