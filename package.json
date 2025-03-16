@@ -1,6 +1,6 @@
 {
-  "name": "todo-package-name",
-  "version": "0.6.2",
+  "name": "typeorm-cursor-paginate",
+  "version": "1.0.0",
   "description": "Cursor-based pagination with directional cursors.",
   "keywords": [
     "directional",
@@ -17,7 +17,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git://github.com/Oriery/todo-package-name.git"
+    "url": "git://github.com/Oriery/typeorm-cursor-paginate.git"
   },
   "main": "lib/index.js",
   "types": "lib/index.d.ts",

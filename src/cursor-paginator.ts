@@ -140,6 +140,11 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
       throw new Error("Metadata is not defined");
     }
 
+    // TODO: would be nice to rewrite this function
+    // so that instead of building a string, it builds
+    // a deep object of "where" clauses.
+    // Potentially, this could be more secure.
+
     let queryPrefix = "";
     const queryParts = [] as string[];
     const queryParams = {} as Record<string, any>;
