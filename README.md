@@ -17,6 +17,7 @@ The biggest difference is **directional** cursors. Directional cursors store the
   - [Paginating Results](#paginating-results)
     - [Retrieving the First Page](#retrieving-the-first-page)
     - [Navigating to the Next Page](#navigating-to-the-next-page)
+- [Alternative usage - without configuration step](#alternative-usage---without-configuration-step)
 - [Key differences from other packages](#key-differences-from-other-packages)
   - [Key differences from `typeorm-paginator`](#key-differences-from-typeorm-paginator)
   - [Key differences from `typeorm-cursor-pagination`](#key-differences-from-typeorm-cursor-pagination)
@@ -43,7 +44,7 @@ Instantiate the paginator with your target entity and define the ordering strate
 
 ```typescript
 const paginator = new CursorPaginator(User, {
-  orderBy: [{ name: "ASC" }, { id: "DESC" }],
+  orderBy: { name: "ASC", id: "DESC" },
 });
 ```
 
@@ -104,6 +105,35 @@ Output structure:
   prevPageCursor: "some-cursor-string",
   nextPageCursor: "some-cursor-string",
 }
+```
+
+## Alternative usage - without configuration step
+
+There is also a way to skip the configuration step and use the `paginate` function directly. First, import the default from the package:
+
+```typescript
+import paginate from "typeorm-cursor-paginate";
+```
+
+Then, use it like this:
+
+```typescript
+// create a query builder
+const query = repoUsers.createQueryBuilder();
+// you can apply desired "where" conditions to the query
+
+// Get the first page
+const result = await paginate(User, query, {
+  orderBy: [{ name: "ASC", id: "DESC" }],
+  limit: 2,
+});
+
+// Get the next page
+const resultNext = await paginate(User, query, {
+  orderBy: [{ name: "ASC", id: "DESC" }],
+  limit: 2,
+  pageCursor: result.nextPageCursor,
+});
 ```
 
 ## Key differences from other packages
