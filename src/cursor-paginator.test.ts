@@ -8,6 +8,7 @@ import {
 
 import { CursorPaginator } from "./cursor-paginator";
 import { JsonTransformer } from "./transformers/json-transformer";
+import { paginate } from "./paginate";
 
 function timestampTransformFrom(value: any): any {
   if (value instanceof FindOperator) {
@@ -797,5 +798,99 @@ describe("testsuite of cursor-paginator", () => {
       limit: -1,
     });
     await expect(pagination).rejects.toThrow();
+  });
+
+  it("test default export paginate() by multi-orders", async () => {
+    const repoUsers = dataSource.getRepository(User);
+
+    const nodes = [
+      repoUsers.create({ name: "c", createdAt: 1600000000 }),
+      repoUsers.create({ name: "b", createdAt: 1600000001 }),
+      repoUsers.create({ name: "a", createdAt: 1600000002 }),
+      repoUsers.create({ name: "c", createdAt: 1600000003 }),
+      repoUsers.create({ name: "b", createdAt: 1600000004 }),
+      repoUsers.create({ name: "c", createdAt: 1600000005 }),
+    ];
+
+    await repoUsers.save(nodes);
+
+    const pagination1 = await paginate(User, repoUsers.createQueryBuilder(), {
+      orderBy: [{ name: "ASC" }, { id: "DESC" }],
+    });
+    expect(pagination1).toEqual({
+      totalCount: 6,
+      nodes: [nodes[2], nodes[4], nodes[1], nodes[5], nodes[3], nodes[0]],
+      hasPrevPage: false,
+      hasNextPage: false,
+      prevPageCursor: expect.any(String),
+      nextPageCursor: expect.any(String),
+    });
+
+    const pagination2 = await paginate(User, repoUsers.createQueryBuilder(), {
+      limit: 2,
+      orderBy: [{ name: "ASC" }, { id: "DESC" }],
+    });
+    expect(pagination2).toEqual({
+      totalCount: 6,
+      nodes: [nodes[2], nodes[4]],
+      hasPrevPage: false,
+      hasNextPage: true,
+      prevPageCursor: expect.any(String),
+      nextPageCursor: expect.any(String),
+    });
+
+    const pagination2Next = await paginate(
+      User,
+      repoUsers.createQueryBuilder(),
+      {
+        limit: 2,
+        pageCursor: pagination2.nextPageCursor,
+        orderBy: [{ name: "ASC" }, { id: "DESC" }],
+      },
+    );
+    expect(pagination2Next).toEqual({
+      totalCount: 6,
+      nodes: [nodes[1], nodes[5]],
+      hasPrevPage: true,
+      hasNextPage: true,
+      prevPageCursor: expect.any(String),
+      nextPageCursor: expect.any(String),
+    });
+
+    const pagination2NextNext = await paginate(
+      User,
+      repoUsers.createQueryBuilder(),
+      {
+        limit: 2,
+        pageCursor: pagination2Next.nextPageCursor,
+        orderBy: [{ name: "ASC" }, { id: "DESC" }],
+      },
+    );
+    expect(pagination2NextNext).toEqual({
+      totalCount: 6,
+      nodes: [nodes[3], nodes[0]],
+      hasPrevPage: true,
+      hasNextPage: false,
+      prevPageCursor: expect.any(String),
+      nextPageCursor: expect.any(String),
+    });
+
+    const pagination2NextNextPrev = await paginate(
+      User,
+      repoUsers.createQueryBuilder(),
+      {
+        limit: 2,
+        pageCursor: pagination2NextNext.prevPageCursor,
+        orderBy: [{ name: "ASC" }, { id: "DESC" }],
+      },
+    );
+    expect(pagination2NextNextPrev).toEqual({
+      totalCount: 6,
+      nodes: [nodes[1], nodes[5]],
+      hasPrevPage: true,
+      hasNextPage: true,
+      prevPageCursor: expect.any(String),
+      nextPageCursor: expect.any(String),
+    });
   });
 });

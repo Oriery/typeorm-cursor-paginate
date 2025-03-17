@@ -1,5 +1,5 @@
 import { ObjectLiteral } from "typeorm";
-import { Order, OrderBy } from "../interfaces/paginator";
+import { OrderBy } from "../interfaces/paginator";
 
 export function normalizeOrderBy<TEntity extends ObjectLiteral>(
   orderBy: OrderBy<TEntity> | OrderBy<TEntity>[],
