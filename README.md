@@ -124,13 +124,13 @@ const query = repoUsers.createQueryBuilder();
 
 // Get the first page
 const result = await paginate(User, query, {
-  orderBy: [{ name: "ASC", id: "DESC" }],
+  orderBy: { name: "ASC", id: "DESC" },
   limit: 2,
 });
 
 // Get the next page
 const resultNext = await paginate(User, query, {
-  orderBy: [{ name: "ASC", id: "DESC" }],
+  orderBy: { name: "ASC", id: "DESC" },
   limit: 2,
   pageCursor: result.nextPageCursor,
 });
