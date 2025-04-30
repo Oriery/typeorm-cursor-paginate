@@ -6,9 +6,7 @@ import {
   PrimaryGeneratedColumn,
 } from "typeorm";
 
-import { CursorPaginator } from "./cursor-paginator";
-import { JsonTransformer } from "./transformers/json-transformer";
-import { paginate } from "./paginate";
+import { default as paginate, JsonTransformer, CursorPaginator } from "./index";
 
 function timestampTransformFrom(value: any): any {
   if (value instanceof FindOperator) {
