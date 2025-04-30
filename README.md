@@ -180,7 +180,7 @@ TODOs:
 
 ### v1 to v2
 
-- `CursorPagination` type was renamed to `Paginated`
+- `CursorPagination` type was renamed to `Paginated`. Example: `CursorPagination<User>` became `Paginated<User>`.
 
 ## License
 
