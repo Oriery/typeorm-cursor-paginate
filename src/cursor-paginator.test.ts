@@ -800,6 +800,22 @@ describe("testsuite of cursor-paginator", () => {
     await expect(pagination).rejects.toThrow();
   });
 
+  it("should throw when orderBy is empty object", () => {
+    expect(() => {
+      new CursorPaginator(User, {
+        orderBy: {},
+      });
+    }).toThrow("OrderBy must not be empty");
+  });
+
+  it("should throw when orderBy is empty array", () => {
+    expect(() => {
+      new CursorPaginator(User, {
+        orderBy: [],
+      });
+    }).toThrow("OrderBy must not be empty");
+  });
+
   it("test default export paginate() by multi-orders", async () => {
     const repoUsers = dataSource.getRepository(User);
 

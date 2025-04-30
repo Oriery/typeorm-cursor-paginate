@@ -170,9 +170,7 @@ _Please try to commit your changes using a descriptive commit message._
 
 TODOs:
 // remove unused dependencies
-// if orderBy is empty, throw an error
-// export type Order = FindOptionsOrderValue;
-// export type OrderBy<TEntity extends ObjectLiteral> = FindOptionsOrder<TEntity>;
+// make it work with all values allowed by TypeORM's `FindOptionsOrderValue` type for `orderBy`.
 
 ## License
 

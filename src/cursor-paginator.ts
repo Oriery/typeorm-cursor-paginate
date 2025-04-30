@@ -65,7 +65,12 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
     options: CursorPaginatorParams<TEntity>,
   ) {
     const { orderBy, transformer } = options;
+
     this._orders = normalizeOrderBy(orderBy);
+    if (this._orders.length === 0) {
+      throw new Error("OrderBy must not be empty");
+    }
+
     this._transformer = transformer ?? new Base64Transformer();
   }
 
