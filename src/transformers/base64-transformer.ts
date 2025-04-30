@@ -5,7 +5,9 @@ export class Base64Transformer<TEntity extends ObjectLiteral>
   implements CursorTransformer<TEntity>
 {
   parse(text: string): Cursor<TEntity> {
-    return JSON.parse(Buffer.from(text, "base64").toString());
+    return JSON.parse(
+      Buffer.from(text, "base64").toString(),
+    ) as Cursor<TEntity>;
   }
 
   stringify(cursor: Cursor<TEntity>): string {

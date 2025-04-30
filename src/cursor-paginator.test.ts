@@ -111,8 +111,8 @@ describe("testsuite of cursor-paginator", () => {
       nodes: [nodes[5], nodes[4], nodes[3], nodes[2], nodes[1], nodes[0]],
       hasPrevPage: false,
       hasNextPage: false,
-      nextPageCursor: expect.any(String),
-      prevPageCursor: expect.any(String),
+      nextPageCursor: expect.any(String) as object,
+      prevPageCursor: expect.any(String) as object,
     });
   });
 
@@ -147,8 +147,8 @@ describe("testsuite of cursor-paginator", () => {
       nodes: [nodes[5], nodes[4], nodes[3]],
       hasPrevPage: false,
       hasNextPage: true,
-      prevPageCursor: expect.any(String),
-      nextPageCursor: expect.any(String),
+      prevPageCursor: expect.any(String) as object,
+      nextPageCursor: expect.any(String) as object,
     });
 
     const paginationPrev = await paginator.paginate(
@@ -173,8 +173,8 @@ describe("testsuite of cursor-paginator", () => {
       nodes: [nodes[2], nodes[1], nodes[0]],
       hasPrevPage: true,
       hasNextPage: false,
-      prevPageCursor: expect.any(String),
-      nextPageCursor: expect.any(String),
+      prevPageCursor: expect.any(String) as object,
+      nextPageCursor: expect.any(String) as object,
     });
 
     const paginationNextPrev = await paginator.paginate(
@@ -186,8 +186,8 @@ describe("testsuite of cursor-paginator", () => {
       nodes: [nodes[5], nodes[4], nodes[3]],
       hasPrevPage: false,
       hasNextPage: true,
-      prevPageCursor: expect.any(String),
-      nextPageCursor: expect.any(String),
+      prevPageCursor: expect.any(String) as object,
+      nextPageCursor: expect.any(String) as object,
     });
 
     const paginationNextNext = await paginator.paginate(
@@ -230,8 +230,8 @@ describe("testsuite of cursor-paginator", () => {
       nodes: [nodes[2], nodes[4], nodes[1], nodes[5], nodes[3], nodes[0]],
       hasPrevPage: false,
       hasNextPage: false,
-      prevPageCursor: expect.any(String),
-      nextPageCursor: expect.any(String),
+      prevPageCursor: expect.any(String) as object,
+      nextPageCursor: expect.any(String) as object,
     });
 
     const pagination2 = await paginator.paginate(
@@ -243,8 +243,8 @@ describe("testsuite of cursor-paginator", () => {
       nodes: [nodes[2], nodes[4]],
       hasPrevPage: false,
       hasNextPage: true,
-      prevPageCursor: expect.any(String),
-      nextPageCursor: expect.any(String),
+      prevPageCursor: expect.any(String) as object,
+      nextPageCursor: expect.any(String) as object,
     });
 
     const pagination2Next = await paginator.paginate(
@@ -256,8 +256,8 @@ describe("testsuite of cursor-paginator", () => {
       nodes: [nodes[1], nodes[5]],
       hasPrevPage: true,
       hasNextPage: true,
-      prevPageCursor: expect.any(String),
-      nextPageCursor: expect.any(String),
+      prevPageCursor: expect.any(String) as object,
+      nextPageCursor: expect.any(String) as object,
     });
 
     const pagination2NextNext = await paginator.paginate(
@@ -269,8 +269,8 @@ describe("testsuite of cursor-paginator", () => {
       nodes: [nodes[3], nodes[0]],
       hasPrevPage: true,
       hasNextPage: false,
-      prevPageCursor: expect.any(String),
-      nextPageCursor: expect.any(String),
+      prevPageCursor: expect.any(String) as object,
+      nextPageCursor: expect.any(String) as object,
     });
 
     const pagination2NextNextPrev = await paginator.paginate(
@@ -282,8 +282,8 @@ describe("testsuite of cursor-paginator", () => {
       nodes: [nodes[1], nodes[5]],
       hasPrevPage: true,
       hasNextPage: true,
-      prevPageCursor: expect.any(String),
-      nextPageCursor: expect.any(String),
+      prevPageCursor: expect.any(String) as object,
+      nextPageCursor: expect.any(String) as object,
     });
   });
 
@@ -318,8 +318,8 @@ describe("testsuite of cursor-paginator", () => {
       nodes: [nodes[2], nodes[4], nodes[1]],
       hasPrevPage: false,
       hasNextPage: true,
-      prevPageCursor: expect.any(String),
-      nextPageCursor: expect.any(String),
+      prevPageCursor: expect.any(String) as object,
+      nextPageCursor: expect.any(String) as object,
     });
 
     const paginationPrev = await paginator.paginate(
@@ -344,8 +344,8 @@ describe("testsuite of cursor-paginator", () => {
       nodes: [nodes[3], nodes[5], nodes[0]],
       hasPrevPage: true,
       hasNextPage: false,
-      prevPageCursor: expect.any(String),
-      nextPageCursor: expect.any(String),
+      prevPageCursor: expect.any(String) as object,
+      nextPageCursor: expect.any(String) as object,
     });
 
     const paginationNextPrev = await paginator.paginate(
@@ -357,8 +357,8 @@ describe("testsuite of cursor-paginator", () => {
       nodes: [nodes[2], nodes[4], nodes[1]],
       hasPrevPage: false,
       hasNextPage: true,
-      prevPageCursor: expect.any(String),
-      nextPageCursor: expect.any(String),
+      prevPageCursor: expect.any(String) as object,
+      nextPageCursor: expect.any(String) as object,
     });
 
     const paginationNextNext = await paginator.paginate(
@@ -402,8 +402,8 @@ describe("testsuite of cursor-paginator", () => {
       nodes: [nodes[0], nodes[1]],
       hasPrevPage: false,
       hasNextPage: false,
-      prevPageCursor: expect.any(String),
-      nextPageCursor: expect.any(String),
+      prevPageCursor: expect.any(String) as object,
+      nextPageCursor: expect.any(String) as object,
     });
   });
 
@@ -428,13 +428,10 @@ describe("testsuite of cursor-paginator", () => {
       transformer: new JsonTransformer(),
     });
 
-    const pagination = await paginator.paginate(
-      repoUsers.createQueryBuilder(),
-      {
-        limit: 3,
-        pageCursor: 'next:{"id":"\\";;;;;;DROP TABLE Users;\\""}',
-      },
-    );
+    await paginator.paginate(repoUsers.createQueryBuilder(), {
+      limit: 3,
+      pageCursor: 'next:{"id":"\\";;;;;;DROP TABLE Users;\\""}',
+    });
     // should not have dropped the table
     const pagination2 = await paginator.paginate(
       repoUsers.createQueryBuilder(),
@@ -447,8 +444,8 @@ describe("testsuite of cursor-paginator", () => {
       nodes: [nodes[0]],
       hasPrevPage: false,
       hasNextPage: true,
-      prevPageCursor: expect.any(String),
-      nextPageCursor: expect.any(String),
+      prevPageCursor: expect.any(String) as object,
+      nextPageCursor: expect.any(String) as object,
     });
   });
 
@@ -473,13 +470,10 @@ describe("testsuite of cursor-paginator", () => {
       transformer: new JsonTransformer(),
     });
 
-    const pagination = await paginator.paginate(
-      repoUsers.createQueryBuilder(),
-      {
-        limit: 3,
-        pageCursor: 'next:{"name":"\\";;;;;;DROP TABLE Users;\\""}',
-      },
-    );
+    await paginator.paginate(repoUsers.createQueryBuilder(), {
+      limit: 3,
+      pageCursor: 'next:{"name":"\\";;;;;;DROP TABLE Users;\\""}',
+    });
     // should not have dropped the table
     const pagination2 = await paginator.paginate(
       repoUsers.createQueryBuilder(),
@@ -492,8 +486,8 @@ describe("testsuite of cursor-paginator", () => {
       nodes: [nodes[0]],
       hasPrevPage: false,
       hasNextPage: true,
-      prevPageCursor: expect.any(String),
-      nextPageCursor: expect.any(String),
+      prevPageCursor: expect.any(String) as object,
+      nextPageCursor: expect.any(String) as object,
     });
   });
 
@@ -518,13 +512,10 @@ describe("testsuite of cursor-paginator", () => {
       transformer: new JsonTransformer(),
     });
 
-    const pagination = await paginator.paginate(
-      repoUsers.createQueryBuilder(),
-      {
-        limit: 3,
-        pageCursor: 'next:{"name":";;;;;;DROP TABLE Users;"}',
-      },
-    );
+    await paginator.paginate(repoUsers.createQueryBuilder(), {
+      limit: 3,
+      pageCursor: 'next:{"name":";;;;;;DROP TABLE Users;"}',
+    });
     // should not have dropped the table
     const pagination2 = await paginator.paginate(
       repoUsers.createQueryBuilder(),
@@ -537,8 +528,8 @@ describe("testsuite of cursor-paginator", () => {
       nodes: [nodes[0]],
       hasPrevPage: false,
       hasNextPage: true,
-      prevPageCursor: expect.any(String),
-      nextPageCursor: expect.any(String),
+      prevPageCursor: expect.any(String) as object,
+      nextPageCursor: expect.any(String) as object,
     });
   });
 
@@ -573,8 +564,8 @@ describe("testsuite of cursor-paginator", () => {
       nodes: [nodes[0], nodes[1], nodes[2]],
       hasPrevPage: false,
       hasNextPage: true,
-      prevPageCursor: expect.any(String),
-      nextPageCursor: expect.any(String),
+      prevPageCursor: expect.any(String) as object,
+      nextPageCursor: expect.any(String) as object,
     });
 
     // delete one node in first page
@@ -593,8 +584,8 @@ describe("testsuite of cursor-paginator", () => {
       nodes: [nodes[3], nodes[4], nodes[5]],
       hasPrevPage: true,
       hasNextPage: false,
-      prevPageCursor: expect.any(String),
-      nextPageCursor: expect.any(String),
+      prevPageCursor: expect.any(String) as object,
+      nextPageCursor: expect.any(String) as object,
     });
   });
 
@@ -629,8 +620,8 @@ describe("testsuite of cursor-paginator", () => {
       nodes: [nodes[0], nodes[1], nodes[2]],
       hasPrevPage: false,
       hasNextPage: true,
-      prevPageCursor: expect.any(String),
-      nextPageCursor: expect.any(String),
+      prevPageCursor: expect.any(String) as object,
+      nextPageCursor: expect.any(String) as object,
     });
 
     // delete one node in first page
@@ -649,8 +640,8 @@ describe("testsuite of cursor-paginator", () => {
       nodes: [nodes[3], nodes[4], nodes[5]],
       hasPrevPage: true,
       hasNextPage: false,
-      prevPageCursor: expect.any(String),
-      nextPageCursor: expect.any(String),
+      prevPageCursor: expect.any(String) as object,
+      nextPageCursor: expect.any(String) as object,
     });
   });
 
@@ -690,8 +681,8 @@ describe("testsuite of cursor-paginator", () => {
       nodes: [nodes[0], nodes[1], nodes[2]],
       hasPrevPage: false,
       hasNextPage: true,
-      prevPageCursor: expect.any(String),
-      nextPageCursor: expect.any(String),
+      prevPageCursor: expect.any(String) as object,
+      nextPageCursor: expect.any(String) as object,
     });
 
     // delete nodes in first page
@@ -710,8 +701,8 @@ describe("testsuite of cursor-paginator", () => {
       nodes: [nodes[3], nodes[4], nodes[5]],
       hasPrevPage: false, // there is already no previous page
       hasNextPage: false,
-      prevPageCursor: expect.any(String),
-      nextPageCursor: expect.any(String),
+      prevPageCursor: expect.any(String) as object,
+      nextPageCursor: expect.any(String) as object,
     });
   });
 
@@ -836,8 +827,8 @@ describe("testsuite of cursor-paginator", () => {
       nodes: [nodes[2], nodes[4], nodes[1], nodes[5], nodes[3], nodes[0]],
       hasPrevPage: false,
       hasNextPage: false,
-      prevPageCursor: expect.any(String),
-      nextPageCursor: expect.any(String),
+      prevPageCursor: expect.any(String) as object,
+      nextPageCursor: expect.any(String) as object,
     });
 
     const pagination2 = await paginate(User, repoUsers.createQueryBuilder(), {
@@ -849,8 +840,8 @@ describe("testsuite of cursor-paginator", () => {
       nodes: [nodes[2], nodes[4]],
       hasPrevPage: false,
       hasNextPage: true,
-      prevPageCursor: expect.any(String),
-      nextPageCursor: expect.any(String),
+      prevPageCursor: expect.any(String) as object,
+      nextPageCursor: expect.any(String) as object,
     });
 
     const pagination2Next = await paginate(
@@ -867,8 +858,8 @@ describe("testsuite of cursor-paginator", () => {
       nodes: [nodes[1], nodes[5]],
       hasPrevPage: true,
       hasNextPage: true,
-      prevPageCursor: expect.any(String),
-      nextPageCursor: expect.any(String),
+      prevPageCursor: expect.any(String) as object,
+      nextPageCursor: expect.any(String) as object,
     });
 
     const pagination2NextNext = await paginate(
@@ -885,8 +876,8 @@ describe("testsuite of cursor-paginator", () => {
       nodes: [nodes[3], nodes[0]],
       hasPrevPage: true,
       hasNextPage: false,
-      prevPageCursor: expect.any(String),
-      nextPageCursor: expect.any(String),
+      prevPageCursor: expect.any(String) as object,
+      nextPageCursor: expect.any(String) as object,
     });
 
     const pagination2NextNextPrev = await paginate(
@@ -903,8 +894,8 @@ describe("testsuite of cursor-paginator", () => {
       nodes: [nodes[1], nodes[5]],
       hasPrevPage: true,
       hasNextPage: true,
-      prevPageCursor: expect.any(String),
-      nextPageCursor: expect.any(String),
+      prevPageCursor: expect.any(String) as object,
+      nextPageCursor: expect.any(String) as object,
     });
   });
 });
