@@ -11,3 +11,11 @@ export {
   CursorPaginatorParams,
   CursorPaginatorPaginateParams,
 } from "./cursor-paginator";
+
+export {
+  CursorPagination,
+  OrderBy,
+  Order,
+  Cursor,
+  CursorTransformer,
+} from "./interfaces/paginator";
