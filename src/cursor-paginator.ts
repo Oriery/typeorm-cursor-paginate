@@ -1,7 +1,7 @@
 import { SelectQueryBuilder, ObjectType, ObjectLiteral } from "typeorm";
 
 import {
-  CursorPagination,
+  Paginated,
   Cursor,
   OrderBy,
   CursorTransformer,
@@ -80,7 +80,7 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
     qb: SelectQueryBuilder<TEntity>,
     params: CursorPaginatorPaginateParams = {},
     isRaw = false,
-  ): Promise<CursorPagination<TEntity>> {
+  ): Promise<Paginated<TEntity>> {
     const take = params.limit;
 
     // limit must not be 0 or negative

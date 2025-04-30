@@ -15,7 +15,7 @@ export type DirectionalCursor<TEntity extends ObjectLiteral> = {
   direction: "next" | "prev";
 };
 
-export interface CursorPagination<TEntity extends ObjectLiteral> {
+export interface Paginated<TEntity extends ObjectLiteral> {
   readonly totalCount: number;
   /**
    * Indicates whether a previous page is available.

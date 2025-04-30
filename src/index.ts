@@ -13,7 +13,7 @@ export {
 } from "./cursor-paginator";
 
 export {
-  CursorPagination,
+  Paginated,
   OrderBy,
   Order,
   Cursor,

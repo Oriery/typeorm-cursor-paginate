@@ -171,7 +171,6 @@ _Please try to commit your changes using a descriptive commit message._
 TODOs:
 // remove unused dependencies
 // if orderBy is empty, throw an error
-// rename CursorPagination -> CursorPagination
 // export type Order = FindOptionsOrderValue;
 // export type OrderBy<TEntity extends ObjectLiteral> = FindOptionsOrder<TEntity>;
 
