@@ -21,6 +21,8 @@ The biggest difference is **directional** cursors. Directional cursors store the
   - [`typeorm-paginator`](#typeorm-paginator-1)
   - [`typeorm-cursor-pagination`](#typeorm-cursor-pagination)
 - [Contributing](#contributing)
+- [Migration](#migration)
+  - [v1 to v2](#v1-to-v2)
 - [License](#license)
 
 ## Installation
@@ -170,9 +172,15 @@ _Please try to commit your changes using a descriptive commit message._
 
 TODOs:
 
-- remove unused dependencies
 - make it work with all values allowed by TypeORM's `FindOptionsOrderValue` type for `orderBy`.
 - properly setup eslint and prettier
+- add to README example of using CursorTransformer
+
+## Migration
+
+### v1 to v2
+
+- `CursorPagination` type was renamed to `Paginated`
 
 ## License
 
