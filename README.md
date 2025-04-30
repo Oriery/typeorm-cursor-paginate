@@ -7,7 +7,7 @@
 
 Cursor-based pagination that works with [TypeORM Query Builder](https://typeorm.io/#/select-query-builder). Read about the general idea of cursor-based pagination [here](https://jsonapi.org/profiles/ethanresnick/cursor-pagination/).
 
-This package is a fork of the [typeorm-paginator](https://www.npmjs.com/package/typeorm-paginator) package with some tweaks. See the [Key differences from `typeorm-paginator`](#key-differences-from-typeorm-paginator) section for more details.
+This package is a fork of the [typeorm-paginator](https://www.npmjs.com/package/typeorm-paginator) package with some tweaks. See the [Key differences from other packages](#key-differences-from-other-packages) section for more details.
 
 The biggest difference is **directional** cursors. Directional cursors store the direction of pagination inside them. They allow to provide only one parameter to paginate in any direction.
 
@@ -146,10 +146,10 @@ const resultNext = await paginate(User, query, {
 Here are the key differences:
 
 - **Directional cursors**: In the original package, cursors are not directional. The pagination direction was determined by what argument the cursor is passed to.
-  This package stores the direction of pagination inside the cursor. It allows to provide only one parameter to paginate in any direction.
+  This package, on the other hand, stores the direction of pagination inside the cursor. It allows to provide only one parameter to paginate in any direction.
 - **Type safety**: Added some more type safety to the code. Now the `orderBy` property only accepts keys that are present in the entity.
 - **Removed PageCursor**: The `PageCursor` class was removed. This package is about cursor-based pagination.
-- **No default "limit"**: Original package had a default limit of 20.Now, if the limit is omitted, all results will be returned.
+- **No default "limit"**: Original package had a default limit of 20. Now, if the limit is omitted, all results will be returned.
 
 ### `typeorm-cursor-pagination`
 
@@ -157,7 +157,7 @@ Here are the key differences:
 
 Here are the key differences:
 
-- **Can provide different directions for different columns in orderBy**: In the original package, all columns in the `orderBy` array had to have the same direction. This package allows to provide different directions for different columns.
+- **Ability to provide different directions for different columns in orderBy**: In the `typeorm-cursor-pagination` package, all columns in the `orderBy` array had to have the same direction. This package, on the other hand, allows to provide different directions for different columns.
 - **Directional cursors**: see above
 - **No default "limit"**: see above
 - **Custom transformation of the cursor**: In the current package, custom transformers to stringify and parse the cursor can be provided. This feature comes from the original package (`typeorm-paginator`).
@@ -167,6 +167,13 @@ Here are the key differences:
 All contributions are welcome, open a pull request or issue any time.
 
 _Please try to commit your changes using a descriptive commit message._
+
+TODOs:
+// remove unused dependencies
+// if orderBy is empty, throw an error
+// rename CursorPagination -> CursorPagination
+// export type Order = FindOptionsOrderValue;
+// export type OrderBy<TEntity extends ObjectLiteral> = FindOptionsOrder<TEntity>;
 
 ## License
 
