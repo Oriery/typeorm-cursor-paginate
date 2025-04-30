@@ -60,53 +60,53 @@ const query = repoUsers.createQueryBuilder();
 
 1. Retrieving the First Page
 
-    Use the paginator to fetch the initial set of results. Here, a limit of 2 items per page is specified:
+   Use the paginator to fetch the initial set of results. Here, a limit of 2 items per page is specified:
 
-    ```typescript
-    const firstPageResult = await paginator.paginate(query, { limit: 2 });
-    ```
+   ```typescript
+   const firstPageResult = await paginator.paginate(query, { limit: 2 });
+   ```
 
-    Output structure:
+   Output structure:
 
-    ```typescript
-    {
-      nodes: [
-        User { id: 4, name: 'a' },
-        User { id: 3, name: 'b' },
-      ],
-      hasPrevPage: false,
-      hasNextPage: true,
-      prevPageCursor: "some-cursor-string",
-      nextPageCursor: "some-cursor-string",
-    }
-    ```
+   ```typescript
+   {
+     nodes: [
+       User { id: 4, name: 'a' },
+       User { id: 3, name: 'b' },
+     ],
+     hasPrevPage: false,
+     hasNextPage: true,
+     prevPageCursor: "some-cursor-string",
+     nextPageCursor: "some-cursor-string",
+   }
+   ```
 
 2. Navigating to the Next Page
 
-    To retrieve the next set of results, pass the `nextPageCursor` from the first query:
+   To retrieve the next set of results, pass the `nextPageCursor` from the first query:
 
-    ```typescript
-    const secondPageResult = await paginator.paginate(query, {
-      limit: 2,
-      // Use the nextPageCursor from the previous result
-      pageCursor: firstPageResult.nextPageCursor,
-    });
-    ```
+   ```typescript
+   const secondPageResult = await paginator.paginate(query, {
+     limit: 2,
+     // Use the nextPageCursor from the previous result
+     pageCursor: firstPageResult.nextPageCursor,
+   });
+   ```
 
-    Output structure:
+   Output structure:
 
-    ```typescript
-    {
-      nodes: [
-        User { id: 1, name: 'c' },
-        User { id: 2, name: 'c' },
-      ],
-      hasPrevPage: true,
-      hasNextPage: true,
-      prevPageCursor: "some-cursor-string",
-      nextPageCursor: "some-cursor-string",
-    }
-    ```
+   ```typescript
+   {
+     nodes: [
+       User { id: 1, name: 'c' },
+       User { id: 2, name: 'c' },
+     ],
+     hasPrevPage: true,
+     hasNextPage: true,
+     prevPageCursor: "some-cursor-string",
+     nextPageCursor: "some-cursor-string",
+   }
+   ```
 
 ### Without the configuration step
 
@@ -169,8 +169,10 @@ All contributions are welcome, open a pull request or issue any time.
 _Please try to commit your changes using a descriptive commit message._
 
 TODOs:
-// remove unused dependencies
-// make it work with all values allowed by TypeORM's `FindOptionsOrderValue` type for `orderBy`.
+
+- remove unused dependencies
+- make it work with all values allowed by TypeORM's `FindOptionsOrderValue` type for `orderBy`.
+- properly setup eslint and prettier
 
 ## License
 
