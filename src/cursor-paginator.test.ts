@@ -645,6 +645,43 @@ describe("testsuite of cursor-paginator", () => {
     });
   });
 
+  it("should not return totalCount when noTotalCount is true", async () => {
+    const repoUsers = dataSource.getRepository(User);
+
+    const nodes = [
+      repoUsers.create({ name: "a", createdAt: 1600000000 }),
+      repoUsers.create({ name: "b", createdAt: 1600000001 }),
+      repoUsers.create({ name: "b", createdAt: 1600000002 }),
+      repoUsers.create({ name: "c", createdAt: 1600000003 }),
+      repoUsers.create({ name: "c", createdAt: 1600000004 }),
+      repoUsers.create({ name: "c", createdAt: 1600000005 }),
+    ];
+
+    await repoUsers.save(nodes);
+
+    const paginator = new CursorPaginator(User, {
+      orderBy: {
+        id: "ASC",
+      },
+    });
+
+    const pagination = await paginator.paginate(
+      repoUsers.createQueryBuilder(),
+      {
+        limit: 3,
+        noTotalCount: true,
+      },
+    );
+    expect(pagination).toEqual({
+      totalCount: null,
+      nodes: [nodes[0], nodes[1], nodes[2]],
+      hasPrevPage: false,
+      hasNextPage: true,
+      prevPageCursor: expect.any(String) as object,
+      nextPageCursor: expect.any(String) as object,
+    });
+  });
+
   // The algorithm currently assumes that if the pageCursor is provided, then the page we came from exists.
   // I could not find a way to fix that without introducing an extra query or more complex bugs.
   // Decided to let this bug be.

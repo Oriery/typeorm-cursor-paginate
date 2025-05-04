@@ -16,7 +16,13 @@ export type DirectionalCursor<TEntity extends ObjectLiteral> = {
 };
 
 export interface Paginated<TEntity extends ObjectLiteral> {
-  readonly totalCount: number;
+  /**
+   * The total number of nodes that match the query.
+   *
+   * The value is null if the total count is not calculated
+   *  (when option `noTotalCount` is set to true).
+   */
+  readonly totalCount: number | null;
   /**
    * Indicates whether a previous page is available.
    *

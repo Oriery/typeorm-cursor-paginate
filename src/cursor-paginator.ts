@@ -37,12 +37,21 @@ export interface CursorPaginatorPaginateParams {
    * the previous page.
    */
   pageCursor?: string | null;
+
   /**
    * The maximum number of items to return in the current page.
    *
    * If not provided, will return all remaining items.
    */
   limit?: number;
+
+  /**
+   * If true, the total count will not be calculated.
+   *
+   * This can be useful for improving performance.
+   * The default value is false (the total count is calculated).
+   */
+  noTotalCount?: boolean;
 }
 
 /**
@@ -119,7 +128,7 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
     const query = new SelectQueryBuilder<TEntity>(qb).take(take && take + 1);
     const [nodes, totalCount] = await Promise.all([
       isRaw ? query.getRawMany<TEntity>() : query.getMany(),
-      qbForCount.getCount(),
+      !params.noTotalCount ? qbForCount.getCount() : Promise.resolve(null),
     ]);
 
     let hasPageInThePrimaryDirection = false;

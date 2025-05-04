@@ -175,6 +175,7 @@ TODOs:
 - make it work with all values allowed by TypeORM's `FindOptionsOrderValue` type for `orderBy`.
 - properly setup eslint and prettier
 - add to README example of using CursorTransformer
+- rename CursorPaginatorParams.transformer to cursorTransformer
 
 ## Migration
 

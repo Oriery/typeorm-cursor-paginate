@@ -14,12 +14,7 @@ export function paginate<TEntity extends ObjectLiteral>(
   options: PaginateOptions<TEntity>,
   isRaw = false,
 ) {
-  const { pageCursor, limit, orderBy, transformer } = options;
+  const paginator = new CursorPaginator<TEntity>(entity, options);
 
-  const paginator = new CursorPaginator<TEntity>(entity, {
-    orderBy,
-    transformer,
-  });
-
-  return paginator.paginate(qb, { pageCursor, limit }, isRaw);
+  return paginator.paginate(qb, options, isRaw);
 }
