@@ -31,6 +31,8 @@ The biggest difference is **directional** cursors. Directional cursors store the
 npm install typeorm-cursor-paginate --save
 ```
 
+Requires `typeorm` as a peer dependency. Both `0.3.21+` and `1.x` are supported and tested.
+
 ## Usage
 
 ### With the Configuration step
@@ -179,6 +181,8 @@ TODOs:
 - rename CursorPaginatorParams.transformer to cursorTransformer
 - fix incorrect cursor returned by library when isRaw is true
 - check if sql injection is possible into the cursor (e.g. orderBy contains name which is a string, and the cursor is changed from `next:{name:"Alex"}` to `next:{name:"DROP TABLE users"}`)
+- add an `engines` field. The package declares no supported node range, so npm cannot warn a consumer on a version it was never built for.
+- make `npm run build` use `tsconfig.build.json`. The script runs bare `tsc`, so the `exclude` that file carries is ignored and `lib/cursor-paginator.test.d.ts` ends up in the published package.
 
 ## Migration
 

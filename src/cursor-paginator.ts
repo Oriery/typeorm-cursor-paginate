@@ -232,7 +232,7 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
   }
 
   private _parseCursor(cursorString: string): DirectionalCursor<TEntity> {
-    let rawCursor = "";
+    let rawCursor: string;
     let isNext = false;
     if (cursorString.startsWith("next:")) {
       rawCursor = cursorString.slice(5);

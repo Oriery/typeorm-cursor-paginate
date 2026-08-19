@@ -73,7 +73,7 @@ describe("testsuite of cursor-paginator", () => {
 
   beforeAll(async () => {
     dataSource = new DataSource({
-      type: "sqlite",
+      type: "better-sqlite3",
       database: ":memory:",
       entities: [User],
       synchronize: true,
