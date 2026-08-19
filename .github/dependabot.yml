@@ -19,3 +19,15 @@ updates:
         update-types:
           - patch
           - minor
+   ignore:
+     # A major bump here would break the `typeorm` peer range, which caps
+     # better-sqlite3 at ^12 and (via typescript-eslint) typescript at <6.1.
+     - dependency-name: "better-sqlite3"
+       update-types: ["version-update:semver-major"]
+     - dependency-name: "typescript"
+       update-types: ["version-update:semver-major"]
+
+ - package-ecosystem: github-actions
+   directory: "/"
+   schedule:
+     interval: weekly
