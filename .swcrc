@@ -1,7 +1,9 @@
 {
   "test": ".*.ts$",
   "env": {
-    "targets": "> 0.25%, not dead, maintained node versions"
+    "targets": {
+      "node": "20.19"
+    }
   },
   "module": {
     "type": "commonjs"
