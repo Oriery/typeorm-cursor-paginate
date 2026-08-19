@@ -177,6 +177,8 @@ TODOs:
 - add to README example of using CursorTransformer
 - add to README info about noTotalCount option
 - rename CursorPaginatorParams.transformer to cursorTransformer
+- fix incorrect cursor returned by library when isRaw is true
+- check if sql injection is possible into the cursor (e.g. orderBy contains name which is a string, and the cursor is changed from `next:{name:"Alex"}` to `next:{name:"DROP TABLE users"}`)
 
 ## Migration
 
