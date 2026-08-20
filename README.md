@@ -183,6 +183,8 @@ TODOs:
 - check if sql injection is possible into the cursor (e.g. orderBy contains name which is a string, and the cursor is changed from `next:{name:"Alex"}` to `next:{name:"DROP TABLE users"}`)
 - add an `engines` field. The package declares no supported node range, so npm cannot warn a consumer on a version it was never built for.
 - make `npm run build` use `tsconfig.build.json`. The script runs bare `tsc`, so the `exclude` that file carries is ignored and `lib/cursor-paginator.test.d.ts` ends up in the published package.
+- build the CJS with `tsc` rather than swc. swc emits the exports through a dynamic `_export(exports, {…})` loop, which Node's `cjs-module-lexer` cannot read, so `import { CursorPaginator } from "typeorm-cursor-paginate"` throws `does not provide an export named` for every ESM consumer. `tsc` emits a per-export `Object.defineProperty`, which it does read. No swc `module` option produces readable output — `commonjs` with `lazy`, `strict` and `noInterop` all fail the same way. `tsc` already runs for the declarations.
+- ship an ESM build behind an `exports` map. Even once the above is fixed, the documented `import paginate from "typeorm-cursor-paginate"` binds the whole module object instead of the function, because Node maps a CJS module's `default` to `module.exports` and ignores the `__esModule` flag that swc and `tsc` both set. Only a real ESM entry point fixes that; the alternative is to drop the default export for a named one, which is breaking. Note that an `exports` map also closes off the deep `lib/…` paths that are reachable today.
 
 ## Migration
 
