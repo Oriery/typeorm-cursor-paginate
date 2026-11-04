@@ -1,51 +1,27 @@
-import {
-  Column,
-  DataSource,
-  Entity,
-  FindOperator,
-  PrimaryGeneratedColumn,
-} from "typeorm";
+import { Column, DataSource, Entity, PrimaryGeneratedColumn } from "typeorm";
 
 import { default as paginate, JsonTransformer, CursorPaginator } from "./index";
 
-function timestampTransformFrom(value: any): any {
-  if (value instanceof FindOperator) {
-    return new FindOperator(
-      (value as any)._type,
-      timestampTransformFrom((value as any)._value),
-    );
-  }
-  if (
-    typeof value === "function" ||
-    typeof value === "undefined" ||
-    value === null ||
-    typeof value === "number"
-  ) {
-    return value;
-  }
-  return ~~(new Date(value).getTime() / 1000);
+function timestampTransformFrom(value: Date | null): number | null {
+  return value === null ? null : Math.floor(value.getTime() / 1000);
 }
 
-function timestampTransformTo(value: any): any {
-  if (value instanceof FindOperator) {
-    const nextValue = timestampTransformTo((value as any)._value);
-    return new FindOperator(
-      (value as any)._type,
-      nextValue,
-      (value as any)._useParameter,
-      (value as any)._multipleParameters,
-    );
-  }
-  if (typeof value === "function") {
-    return value;
-  }
-  if (typeof value === "undefined") {
-    return;
-  }
-  if (value === null) {
-    return null;
-  }
-  return new Date(value * 1000);
+function timestampTransformTo(value: number | null): Date | null {
+  return value === null ? null : new Date(value * 1000);
+}
+
+function jsonCursor(
+  keys: string[],
+  values: unknown[],
+  extra: Record<string, unknown> = {},
+): string {
+  return `v3:${JSON.stringify({
+    version: 3,
+    direction: "next",
+    order: keys.map((key) => ({ key, direction: "ASC", nulls: "LAST" })),
+    values,
+    ...extra,
+  })}`;
 }
 
 @Entity({ name: "users" })
@@ -304,6 +280,7 @@ describe("testsuite of cursor-paginator", () => {
     const paginator = new CursorPaginator(User, {
       orderBy: {
         createdAt: "DESC",
+        id: "ASC",
       },
     });
 
@@ -388,6 +365,7 @@ describe("testsuite of cursor-paginator", () => {
     const paginator = new CursorPaginator(User, {
       orderBy: {
         createdAt: "ASC",
+        id: "ASC",
       },
     });
 
@@ -425,13 +403,15 @@ describe("testsuite of cursor-paginator", () => {
       orderBy: {
         id: "ASC",
       },
-      transformer: new JsonTransformer(),
+      cursorTransformer: new JsonTransformer(),
     });
 
-    await paginator.paginate(repoUsers.createQueryBuilder(), {
-      limit: 3,
-      pageCursor: 'next:{"id":"\\";;;;;;DROP TABLE Users;\\""}',
-    });
+    await expect(
+      paginator.paginate(repoUsers.createQueryBuilder(), {
+        limit: 3,
+        pageCursor: jsonCursor(["id"], ['";;;;;;DROP TABLE users;"']),
+      }),
+    ).rejects.toMatchObject({ code: "INVALID_CURSOR" });
     // should not have dropped the table
     const pagination2 = await paginator.paginate(
       repoUsers.createQueryBuilder(),
@@ -466,13 +446,14 @@ describe("testsuite of cursor-paginator", () => {
     const paginator = new CursorPaginator(User, {
       orderBy: {
         name: "ASC",
+        id: "ASC",
       },
-      transformer: new JsonTransformer(),
+      cursorTransformer: new JsonTransformer(),
     });
 
     await paginator.paginate(repoUsers.createQueryBuilder(), {
       limit: 3,
-      pageCursor: 'next:{"name":"\\";;;;;;DROP TABLE Users;\\""}',
+      pageCursor: jsonCursor(["name", "id"], ['";;;;;;DROP TABLE users;"', 0]),
     });
     // should not have dropped the table
     const pagination2 = await paginator.paginate(
@@ -508,13 +489,14 @@ describe("testsuite of cursor-paginator", () => {
     const paginator = new CursorPaginator(User, {
       orderBy: {
         name: "ASC",
+        id: "ASC",
       },
-      transformer: new JsonTransformer(),
+      cursorTransformer: new JsonTransformer(),
     });
 
     await paginator.paginate(repoUsers.createQueryBuilder(), {
       limit: 3,
-      pageCursor: 'next:{"name":";;;;;;DROP TABLE Users;"}',
+      pageCursor: jsonCursor(["name", "id"], [";;;;;;DROP TABLE users;", 0]),
     });
     // should not have dropped the table
     const pagination2 = await paginator.paginate(
@@ -682,12 +664,7 @@ describe("testsuite of cursor-paginator", () => {
     });
   });
 
-  // The algorithm currently assumes that if the pageCursor is provided, then the page we came from exists.
-  // I could not find a way to fix that without introducing an extra query or more complex bugs.
-  // Decided to let this bug be.
-  // Because it occurs rarely in real scenarios and shouldn't cause critical problems even if it occurs.
-  // The following test fails because of this bug.
-  it.skip("test computing of hasPrevPage when it has been completely deleted while paginating", async () => {
+  it("test computing of hasPrevPage when it has been completely deleted while paginating", async () => {
     const repoUsers = dataSource.getRepository(User);
 
     const nodes = [
@@ -750,12 +727,12 @@ describe("testsuite of cursor-paginator", () => {
       orderBy: {
         id: "ASC",
       },
-      transformer: new JsonTransformer(),
+      cursorTransformer: new JsonTransformer(),
     });
 
     const pagination = paginator.paginate(repoUsers.createQueryBuilder(), {
       limit: 3,
-      pageCursor: 'next:{"foo":1}',
+      pageCursor: jsonCursor(["id"], [1], { extra: true }),
     });
     await expect(pagination).rejects.toThrow();
   });
@@ -767,12 +744,12 @@ describe("testsuite of cursor-paginator", () => {
       orderBy: {
         id: "ASC",
       },
-      transformer: new JsonTransformer(),
+      cursorTransformer: new JsonTransformer(),
     });
 
     const pagination = paginator.paginate(repoUsers.createQueryBuilder(), {
       limit: 3,
-      pageCursor: "next:{}",
+      pageCursor: jsonCursor(["id"], []),
     });
     await expect(pagination).rejects.toThrow();
   });
@@ -784,12 +761,12 @@ describe("testsuite of cursor-paginator", () => {
       orderBy: {
         id: "ASC",
       },
-      transformer: new JsonTransformer(),
+      cursorTransformer: new JsonTransformer(),
     });
 
     const pagination = paginator.paginate(repoUsers.createQueryBuilder(), {
       limit: 3,
-      pageCursor: 'next:{"id":undefined}',
+      pageCursor: jsonCursor(["id"], [undefined]),
     });
     await expect(pagination).rejects.toThrow();
   });
@@ -801,7 +778,7 @@ describe("testsuite of cursor-paginator", () => {
       orderBy: {
         id: "ASC",
       },
-      transformer: new JsonTransformer(),
+      cursorTransformer: new JsonTransformer(),
     });
 
     const pagination = paginator.paginate(repoUsers.createQueryBuilder(), {
@@ -817,7 +794,7 @@ describe("testsuite of cursor-paginator", () => {
       orderBy: {
         id: "ASC",
       },
-      transformer: new JsonTransformer(),
+      cursorTransformer: new JsonTransformer(),
     });
 
     const pagination = paginator.paginate(repoUsers.createQueryBuilder(), {

@@ -34,3 +34,42 @@ jobs:
       run: npm install --no-save typeorm@${{ matrix.typeorm-version }}
     - run: npm test
       timeout-minutes: 1
+
+  postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - typeorm-version: "0.3.21"
+            sqlite-version: "11.10.0"
+            node-version: 22.x
+          - typeorm-version: "1.1.1"
+            sqlite-version: "12.11.1"
+            node-version: 24.x
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_PASSWORD: paginator-test-only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PAGINATOR_POSTGRES_URL: postgres://postgres:paginator-test-only@localhost:5432/postgres
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+      - run: npm ci
+      - run: npm install --no-save --package-lock=false typeorm@${{ matrix.typeorm-version }} better-sqlite3@${{ matrix.sqlite-version }}
+      - run: npx tsc --noEmit --emitDeclarationOnly false
+      - run: npm run test:unit -- --testPathIgnorePatterns=postgres-regressions
+      - run: npm run test:postgres

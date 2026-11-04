@@ -1,14 +1,14 @@
-import { ObjectLiteral } from "typeorm";
-import { Cursor, CursorTransformer } from "../interfaces/paginator";
+import type {
+  CursorEnvelope,
+  CursorTransformer,
+} from "../interfaces/paginator";
 
-export class JsonTransformer<
-  TEntity extends ObjectLiteral,
-> implements CursorTransformer<TEntity> {
-  parse(text: string): Cursor<TEntity> {
-    return JSON.parse(text) as Cursor<TEntity>;
+export class JsonTransformer implements CursorTransformer {
+  parse(text: string): unknown {
+    return JSON.parse(text) as unknown;
   }
 
-  stringify(cursor: Cursor<TEntity>): string {
+  stringify(cursor: CursorEnvelope): string {
     return JSON.stringify(cursor);
   }
 }

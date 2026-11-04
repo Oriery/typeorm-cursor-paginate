@@ -1,185 +1,146 @@
-# TypeORM Paginator
+# TypeORM Cursor Paginator
 
-<p>
-  <a href="https://npmcharts.com/compare/typeorm-cursor-paginate?minimal=true"><img alt="Downloads" src="https://img.shields.io/npm/dt/typeorm-cursor-paginate.svg?style=flat-square" /></a>
-  <a href="https://www.npmjs.com/package/typeorm-cursor-paginate"><img alt="License" src="https://img.shields.io/npm/l/typeorm-cursor-paginate.svg?style=flat-square" /></a>
-</p>
+Cursor pagination for TypeORM queries, with directional cursors, mixed ordering, explicit NULL placement, and entity or raw results. A cursor carries its direction, so the same `pageCursor` option requests the next or previous page.
 
-Cursor-based pagination that works with [TypeORM Query Builder](https://typeorm.io/#/select-query-builder). Read about the general idea of cursor-based pagination [here](https://jsonapi.org/profiles/ethanresnick/cursor-pagination/).
+**This checkout develops the unreleased v3 major release.** The core contracts below replace v2 behavior. Package entry points, packed consumer compatibility, runtime support policy, and npm publication remain part of [section B of the work plan](todo.md#b-public-api-and-distribution). Installing the currently published package does not provide these v3 contracts.
 
-This package is a fork of the [typeorm-paginator](https://www.npmjs.com/package/typeorm-paginator) package with some tweaks. See the [Key differences from other packages](#key-differences-from-other-packages) section for more details.
+Read the [core contract](docs/core-contract.md) for supported queries, precise values, availability flags, and query costs. Existing consumers should start with the [migration guide](MIGRATION.md).
 
-The biggest difference is **directional** cursors. Directional cursors store the direction of pagination inside them. They allow to provide only one parameter to paginate in any direction.
+## Entity pages
 
-- [Installation](#installation)
-- [Usage](#usage)
-  - [With the Configuration step](#with-the-configuration-step)
-    - [Configuration](#configuration)
-    - [Retrieving pages](#retrieving-pages)
-  - [Without the configuration step](#without-the-configuration-step)
-- [Key differences from other packages](#key-differences-from-other-packages)
-  - [`typeorm-paginator`](#typeorm-paginator-1)
-  - [`typeorm-cursor-pagination`](#typeorm-cursor-pagination)
-- [Contributing](#contributing)
-- [Migration](#migration)
-  - [v1 to v2](#v1-to-v2)
-- [License](#license)
-
-## Installation
-
-```bash
-npm install typeorm-cursor-paginate --save
-```
-
-Requires `typeorm` as a peer dependency. Both `0.3.21+` and `1.x` are supported and tested.
-
-## Usage
-
-### With the Configuration step
-
-Start by importing the `CursorPaginator` class:
+The examples use the v3 source API exported by the package entry module. Include every primary-key column in `orderBy`; the paginator does not append a tie-breaker automatically.
 
 ```typescript
+import { Column, Entity, PrimaryColumn, type DataSource } from "typeorm";
 import { CursorPaginator } from "typeorm-cursor-paginate";
-```
 
-#### Configuration
+@Entity()
+class User {
+  @PrimaryColumn("integer")
+  id!: number;
 
-Instantiate the paginator with your target entity and define the ordering strategy. In this example, users are sorted by their `name` in ascending order and by `id` in descending order:
+  @Column("text")
+  name!: string;
 
-```typescript
+  @Column("integer")
+  ownerId!: number;
+}
+
 const paginator = new CursorPaginator(User, {
   orderBy: { name: "ASC", id: "DESC" },
 });
+
+async function readUsers(dataSource: DataSource, ownerId: number) {
+  // dataSource is initialized with User in its entities configuration.
+  const query = dataSource
+    .getRepository(User)
+    .createQueryBuilder("user")
+    .where("user.ownerId = :ownerId", { ownerId });
+
+  const first = await paginator.paginate(query, { limit: 2 });
+  const second = await paginator.paginate(query, {
+    limit: 2,
+    pageCursor: first.nextPageCursor,
+  });
+  const back = await paginator.paginate(query, {
+    limit: 2,
+    pageCursor: second.prevPageCursor,
+  });
+  return { first, second, back };
+}
 ```
 
-Prepare your query:
+The caller's builder, selections, and parameters remain unchanged, so the same query can be reused. Pagination owns ordering and limits: remove preconfigured `orderBy`, `take`, `skip`, `limit`, and `offset` before calling it.
+
+For exactly four matching users `(4, "a")`, `(3, "b")`, `(2, "c")`, and `(1, "c")`, the pages are:
+
+| Page   | Ordered IDs | `totalCount` | `hasPrevPage` | `hasNextPage` |
+| ------ | ----------- | ------------ | ------------- | ------------- |
+| First  | `4, 3`      | `4`          | `false`       | `true`        |
+| Second | `2, 1`      | `4`          | `true`        | `false`       |
+
+Equal names retain descending ID order. Each nonempty page has both `prevPageCursor` and `nextPageCursor`, even when the corresponding flag is false. Empty pages have null cursors; their flags follow the [empty-page contract](docs/core-contract.md#page-availability-and-empty-pages).
+
+`limit` must be a positive safe integer. Omitting it deliberately returns all remaining matching roots. `noTotalCount: true` returns `totalCount: null` and skips the count query without weakening availability flags.
+
+`noOppositePageCheck` defaults to `false`, like `noTotalCount`. For consumers that only need availability in the requested direction, set it to `true` to save one query on cursor requests:
 
 ```typescript
-const query = repoUsers.createQueryBuilder();
-// you can apply desired "where" conditions to the query
-```
-
-#### Retrieving pages
-
-1. Retrieving the First Page
-
-   Use the paginator to fetch the initial set of results. Here, a limit of 2 items per page is specified:
-
-   ```typescript
-   const firstPageResult = await paginator.paginate(query, { limit: 2 });
-   ```
-
-   Output structure:
-
-   ```typescript
-   {
-     nodes: [
-       User { id: 4, name: 'a' },
-       User { id: 3, name: 'b' },
-     ],
-     hasPrevPage: false,
-     hasNextPage: true,
-     prevPageCursor: "some-cursor-string",
-     nextPageCursor: "some-cursor-string",
-   }
-   ```
-
-2. Navigating to the Next Page
-
-   To retrieve the next set of results, pass the `nextPageCursor` from the first query:
-
-   ```typescript
-   const secondPageResult = await paginator.paginate(query, {
-     limit: 2,
-     // Use the nextPageCursor from the previous result
-     pageCursor: firstPageResult.nextPageCursor,
-   });
-   ```
-
-   Output structure:
-
-   ```typescript
-   {
-     nodes: [
-       User { id: 1, name: 'c' },
-       User { id: 2, name: 'c' },
-     ],
-     hasPrevPage: true,
-     hasNextPage: true,
-     prevPageCursor: "some-cursor-string",
-     nextPageCursor: "some-cursor-string",
-   }
-   ```
-
-### Without the configuration step
-
-There is also a way to skip the configuration step and use the `paginate` function directly. First, import the default from the package:
-
-```typescript
-import paginate from "typeorm-cursor-paginate";
-```
-
-Then, use it like this:
-
-```typescript
-// create a query builder
-const query = repoUsers.createQueryBuilder();
-// you can apply desired "where" conditions to the query
-
-// Get the first page
-const result = await paginate(User, query, {
-  orderBy: { name: "ASC", id: "DESC" },
-  limit: 2,
+const forward = await paginator.paginate(query, {
+  limit: 20,
+  pageCursor: first.nextPageCursor,
+  noTotalCount: true,
+  noOppositePageCheck: true,
 });
+// hasNextPage remains a boolean; hasPrevPage is null (unchecked).
+```
 
-// Get the next page
-const resultNext = await paginate(User, query, {
+For backward requests, `hasPrevPage` remains known and `hasNextPage` becomes `null`. Cursorless pages keep both flags known without an extra query. Total counting is independent of this option. Default calls retain boolean flag types; opting out or passing a dynamic boolean returns `Paginated<TNode, boolean | null>`. See the [availability contract](docs/core-contract.md#page-availability-and-empty-pages) for empty pages and reusable options.
+
+For a single call, use the named convenience function:
+
+```typescript
+import { paginate } from "typeorm-cursor-paginate";
+
+const page = await paginate(User, query, {
   orderBy: { name: "ASC", id: "DESC" },
-  limit: 2,
-  pageCursor: result.nextPageCursor,
+  limit: 20,
+  noTotalCount: true,
 });
 ```
 
-## Key differences from other packages
+Here and in the availability example, `query` is a builder prepared as in `readUsers`, and `first` is its first-page result. The source entry also retains `paginate` as a default export; package-level CJS/ESM behavior is still subject to section B's distribution checks.
 
-### `typeorm-paginator`
+## NULLs and raw projections
 
-[typeorm-paginator](https://www.npmjs.com/package/typeorm-paginator) is the original package that this one is based on.
+Order values accept TypeORM's uppercase/lowercase strings, `1`/`-1`, and direction/NULL-placement objects. NULLs default to `LAST` for both ascending and descending order.
 
-Here are the key differences:
+```typescript
+const byName = new CursorPaginator(User, {
+  orderBy: {
+    name: { direction: "asc", nulls: "last" },
+    id: "DESC",
+  },
+});
+```
 
-- **Directional cursors**: In the original package, cursors are not directional. The pagination direction was determined by what argument the cursor is passed to.
-  This package, on the other hand, stores the direction of pagination inside the cursor. It allows to provide only one parameter to paginate in any direction.
-- **Type safety**: Added some more type safety to the code. Now the `orderBy` property only accepts keys that are present in the entity.
-- **Removed PageCursor**: The `PageCursor` class was removed. This package is about cursor-based pagination.
-- **No default "limit"**: Original package had a default limit of 20. Now, if the limit is omitted, all results will be returned.
+Use `paginateRaw` for a SQL projection and declare its actual output type:
 
-### `typeorm-cursor-pagination`
+```typescript
+type UserRow = { user_id: number; display_name: string };
 
-[typeorm-cursor-pagination](https://www.npmjs.com/package/typeorm-cursor-pagination) is another package that provides cursor-based pagination for TypeORM. As of now, March 2025, it gets more and more popular than the `typeorm-paginator` package.
+const rawQuery = query
+  .clone()
+  .select("user.id", "user_id")
+  .addSelect("user.name", "display_name");
 
-Here are the key differences:
+const page = await paginator.paginateRaw<UserRow>(rawQuery, {
+  limit: 20,
+});
+```
 
-- **Ability to provide different directions for different columns in orderBy**: In the `typeorm-cursor-pagination` package, all columns in the `orderBy` array had to have the same direction. This package, on the other hand, allows to provide different directions for different columns.
-- **Directional cursors**: see above
-- **No default "limit"**: see above
-- **Custom transformation of the cursor**: In the current package, custom transformers to stringify and parse the cursor can be provided. This feature comes from the original package (`typeorm-paginator`).
+Raw mode still paginates root records. It supports to-one relation joins and rejects to-many joins before SQL. Entity mode supports to-many relation joins without truncating the selected roots' joined collections. Raw results use database-driver values; TypeORM column transformers apply to entity hydration only. Required boundary fields can be omitted from public projections: private selections supply them without adding them to returned objects.
 
-## Contributing
+## Errors and custom cursor encoding
 
-All contributions are welcome, open a pull request or issue any time.
+Invalid cursors, ordering, limits, and unsupported query shapes produce a `PaginationInputError` with a stable `code`. For example, `UNSUPPORTED_CURSOR_VERSION` means an old token must be discarded and pagination restarted. See the [error table](docs/core-contract.md#errors-and-validation) and [custom codec example](docs/core-contract.md#custom-cursor-encoding).
 
-_Please try to commit your changes using a descriptive commit message._
+Cursors preserve database boundary values, including PostgreSQL microseconds and exact bigint/numeric text. Base64 is an encoding, not authentication or encryption. Keep authorization predicates in every query and reset pagination when its filters change.
 
-See the [v3 work plan and backlog](todo.md) for implementation tasks, recommendations, execution order and acceptance checks.
+## Development and validation
 
-## Migration
+```sh
+npm ci
+npm test
+npm run test:postgres
+npx tsc --noEmit --emitDeclarationOnly false
+npm run build
+```
 
-### v1 to v2
+The fast suite uses real SQLite through `better-sqlite3`. `test:postgres` starts and removes a disposable PostgreSQL 18 Docker container by default. Alternatively, set `PAGINATOR_POSTGRES_URL` to a test server login with `CREATE DATABASE` permission; the suite creates a unique database and drops it afterward. It does not reuse an application database. PostgreSQL tests deliberately use different process and database timezones.
 
-- `CursorPagination` type was renamed to `Paginated`. Example: `CursorPagination<User>` became `Paginated<User>`.
+The ordinary unit command skips PostgreSQL when no test URL is configured; passing it alone is insufficient evidence for the complete core contract. See [validation and measured costs](docs/core-contract.md#validation-and-measured-costs) and the [v3 backlog](todo.md) for the acceptance boundary.
 
 ## License
 
-Released under the [MIT License](https://github.com/Oriery/typeorm-cursor-paginate/blob/main/License)
+A fork of `typeorm-paginator`, released under the [MIT License](License).
