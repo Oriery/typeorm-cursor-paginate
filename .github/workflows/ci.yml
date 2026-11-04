@@ -41,26 +41,22 @@ jobs:
     timeout-minutes: 20
     strategy:
       fail-fast: false
-      # Target actual floors and current branches, not a redundant Cartesian product.
+      # Keep dependency floors and current branches on the CI runtime lines, 24 and 26.
       matrix:
         include:
-          - node: 22.13.0
+          - node: 24.11.0
             typeorm: 0.3.21
             sqlite: 11.10.0
-            typescript: 5.7.3
-          - node: 22.13.0
-            typeorm: 1.0.0
-            sqlite: 12.11.1
             typescript: 5.7.3
           - node: 24.11.0
             typeorm: 1.0.0
             sqlite: 12.11.1
-            typescript: 6.0.3
+            typescript: 5.7.3
           - node: 26.0.0
             typeorm: 1.0.0
             sqlite: 12.11.1
             typescript: 6.0.3
-          - node: 22.x
+          - node: 24.x
             typeorm: "0.3"
             sqlite: 12.11.1
             typescript: "5"

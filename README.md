@@ -50,7 +50,7 @@ The only other public subpath is `typeorm-cursor-paginate/package.json`. Deep `l
 | TypeScript consumer      | 5.7.3+ within 5.x/6.x; NodeNext, Node16, legacy node/node10, and bundler resolution                                                         |
 | Development tools        | Node 24.11+ within 24.x is the reference environment, npm 11, locked TypeScript 6.0; other runtime floors are tested independently          |
 
-Runtime support follows [maintained Node release lines](https://nodejs.org/en/about/previous-releases) and TypeORM 1's engine floors. TypeORM 0.3.21 requires better-sqlite3 8–11; TypeORM 1.0.0 requires 12. The test matrix uses 11.10.0 and 12.11.1 respectively, without forcing incompatible peers. TypeScript fixtures use Node ambient types and `ESNext.Disposable` for TypeORM 1, with full declaration checking. Bundler resolution verifies types for Node-targeted builds; browser execution is outside this package's support policy.
+Runtime support follows [maintained Node release lines](https://nodejs.org/en/about/previous-releases) and TypeORM 1's engine floors. CI runs on Node 24 and 26; Node 22 compatibility was verified during release preparation but is not continuously tested. TypeORM 0.3.21 requires better-sqlite3 8–11; TypeORM 1.0.0 requires 12. The test matrix uses 11.10.0 and 12.11.1 respectively, without forcing incompatible peers. TypeScript fixtures use Node ambient types and `ESNext.Disposable` for TypeORM 1, with full declaration checking. Bundler resolution verifies types for Node-targeted builds; browser execution is outside this package's support policy.
 
 ## Entity pages
 
