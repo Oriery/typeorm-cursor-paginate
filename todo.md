@@ -272,13 +272,13 @@ Sources: [CI workflow](.github/workflows/ci.yml), [lint configuration](eslint.co
 
 - [x] Add `engines` and align the compilation target, documentation and runtime test matrix.
       Choose runtime support separately from development-tool requirements, accounting for the supported TypeORM versions' own engine constraints.
-- [ ] Test the exact minimum supported Node/TypeORM combinations as well as current supported branches.
+- [x] Test the exact minimum supported Node/TypeORM combinations as well as current supported branches.
       Floating `typeorm@0.3` and `typeorm@1` do not verify the advertised lower bounds `0.3.21` and `1.0.0`.
 - [x] Add explicit typechecking and production-build checks to CI.
 - [x] Pack the package and install the tarball into clean CommonJS, native ESM and TypeScript consumer fixtures.
       Test the public entry points rather than relying only on source imports transformed by Jest.
 - [x] Include TypeScript NodeNext and other deliberately supported module-resolution modes in consumer checks.
-- [ ] Run PostgreSQL regressions in CI alongside SQLite and validate package contents automatically.
+- [x] Run PostgreSQL regressions in CI alongside SQLite and validate package contents automatically.
       Targeted compatibility jobs run both databases and packed consumer/file validation.
 - [x] Resolve meaningful lint warnings and align ESLint/Prettier with the chosen source/module setup.
       The tools are already configured; replace the old vague setup task with concrete fixes.
@@ -293,12 +293,12 @@ Sources: [CI workflow](.github/workflows/ci.yml), [lint configuration](eslint.co
 - [x] Correct the README example whose equal-name IDs are shown ascending despite descending ID ordering.
 - [x] Execute or otherwise verify the documented import and pagination examples against built artifacts.
 - [x] Add a v2-to-v3 migration guide covering exports, options, types, supported runtimes, deep imports and old cursor invalidation/restart.
-      The core migration guide exists; finalize runtime/module/deep-import sections after distribution checks.
+      The migration guide includes verified runtime/module/deep-import policies and restart behavior.
 - [x] Keep the README linked to this backlog instead of duplicating task lists.
 
 Acceptance for B: a packed v3 release candidate installs and works in all documented consumer forms; its types, runtime exports, examples and published file list agree.
 
-### B implementation and validation — 2026-11-04
+### B completion and validation — 2026-11-04
 
 The release candidate is `3.0.0-rc.0`. Named exports are primary; the default remains the `paginate` function (CommonJS `.default`). Entity arguments remain validated against root metadata. Both raw APIs default to unknown fields, and legacy/malformed codec options fail explicitly.
 
@@ -316,8 +316,10 @@ Local exact-minimum checks have passed:
 | 26.0.0  | 1.0.0   | 12.11.1        | 6.0.3               | Packed runtime/type consumers and README examples                                      |
 | 24.21.0 | 1.1.2   | 12.11.1        | 6.0.3               | 215 SQLite/input + 44 PostgreSQL tests, lint/format/typecheck, build, packed consumers |
 
-The seven-job CI uses one locked quality job and six targeted compatibility pairs, including exact floors and current 22/26 branches; it runs PostgreSQL alongside SQLite, checks production builds and actual installed tarballs, and uploads the RC artifact. Strengthened installed-documentation checks pass locally: every README TypeScript block is extracted from the installed tarball and executed, the compiler resolver asserts each conditional declaration target, installs enforce engines/peers, and installed files match freshly packed checkout bytes. Final CI is in progress.
+The seven-job CI uses one locked quality job and six targeted compatibility pairs, including exact floors and current 22/26 branches; it runs PostgreSQL alongside SQLite, checks production builds and actual installed tarballs, and uploads the RC artifact. Strengthened installed-documentation checks pass locally: every README TypeScript block is extracted from the installed tarball and executed, the compiler resolver asserts each conditional declaration target, installs enforce engines/peers, and installed files match freshly packed checkout bytes. The [implementation CI run](https://github.com/Oriery/typeorm-cursor-paginate/actions/runs/41823212100) passed all seven jobs, including current TypeORM 0.3/1 branches and exact runtime/dependency floors.
 
 Dependency PR #16 was already closed and is superseded by this toolchain. Compatible dependency lines were refreshed; unused SWC CLI, rimraf, and eslint-plugin-prettier were removed. Better-sqlite3 13 and TypeScript 7 remain outside TypeORM/typescript-eslint compatibility. Exact minimatch 11.0.4 and glob 14.0.3 overrides fix development-tool advisories and must be removed once upstream ranges accept patched versions. `npm audit --omit=dev` is clean; the complete audit has five low-severity propagated findings from the single unpatched deepmerge advisory in Jest configuration merging, tracked in [issue #20](https://github.com/Oriery/typeorm-cursor-paginate/issues/20). Repository-controlled configuration is the current input; the dependency is not shipped.
 
 ESLint now covers source and build/test scripts with zero warnings allowed, current syntax, and strict unsafe/promise checks. Prettier checks repository code, configuration and documentation separately; `npm run format` applies the same policy. No stable npm publication or release tag is part of B.
+
+Final clean validation used `npm ci` followed by `npm run check`: lint with zero warnings, repository formatting, typecheck, all 215 SQLite/input and 44 PostgreSQL tests, production builds, and installed CJS/ESM/TypeScript consumers passed. Independent packaging and consumer review found no remaining release blockers. The 25-file locally installable artifact is `artifacts/typeorm-cursor-paginate-3.0.0-rc.0.tgz` (generated and ignored), SHA-256 `5662163279b710992cc54d09f696af0de9f7551bb70f03225fc265dd294dc530`. Two clean packs matched byte for byte, and the same artifact passed all four exact-minimum consumer combinations. Section B is complete; integration validation and stable publication are the next stage.
