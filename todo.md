@@ -33,8 +33,8 @@ Keep public examples and reproductions generic and self-contained.
 
 ### A1. Establish the contracts and regression harness
 
-- [ ] Convert the failure descriptions below into committed regression tests before fixing them.
-- [ ] Add PostgreSQL integration fixtures alongside fast SQLite coverage, using isolated test databases and representative joined entities.
+- [x] Convert the failure descriptions below into committed regression tests before fixing them.
+- [x] Add PostgreSQL integration fixtures alongside fast SQLite coverage, using isolated test databases and representative joined entities.
 - [ ] Define the supported query shapes: entity results, raw results, joins, partial selections, existing order/limit/offset, and aggregates or grouped queries.
       Support a shape correctly or reject it explicitly; do not imply every arbitrary `SelectQueryBuilder` is supported.
 - [ ] Define whether pagination owns ordering and limits, and how a preconfigured query is handled.
@@ -137,6 +137,16 @@ Sources: [page flags](src/cursor-paginator.ts), [public result contract](src/int
       Add backward paging, deletion of all earlier/later rows, and mutation between reads.
 - [ ] Keep `noTotalCount` independent of page availability, and verify that it suppresses the count query.
 - [ ] Measure query counts and joined-row fan-out for the final algorithms; document the supported consistency guarantees and cost of exact flags.
+
+### A regression baseline
+
+The regression-first commit adds 46 SQLite composition/traversal tests (44 failing on v2),
+77 input-contract tests (76 failing on v2), and 13 integration tests run against a disposable
+PostgreSQL 18 database (all failing on v2). The failures include the recorded query reuse,
+filter collision, OR grouping, NULL traversal, timestamp precision, raw and projection defects.
+`npm run test:postgres` owns and removes a disposable Docker service unless an administrative
+`PAGINATOR_POSTGRES_URL` is supplied; the suite creates and drops a unique test database.
+These are failing acceptance tests at this point, not evidence of completed implementation.
 
 ## B. Public API and distribution
 
