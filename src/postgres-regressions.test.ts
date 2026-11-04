@@ -10,6 +10,7 @@ import {
   SelectQueryBuilder,
 } from "typeorm";
 import { CursorPaginator } from "./cursor-paginator";
+import { paginate, paginateRaw } from "./paginate";
 import { OrderBy, Paginated } from "./interfaces/paginator";
 
 @Entity("page_owner")
@@ -675,5 +676,182 @@ postgres("PostgreSQL core correctness (isolated database)", () => {
     expect(secondRaw.totalCount).toBeNull();
     expect(queryLog).toHaveLength(2);
     expect(queryLog.some(({ sql }) => /COUNT\s*\(/i.test(sql))).toBe(false);
+  });
+
+  it("skips only the opposite entity probe while preserving default boolean types", async () => {
+    const paginator = new CursorPaginator(PageEvent, {
+      orderBy: { id: "ASC" },
+    });
+    const qb = db
+      .getRepository(PageEvent)
+      .createQueryBuilder("e")
+      .leftJoinAndSelect("e.notes", "note");
+    const original = qb.getQueryAndParameters();
+    const requireBoolean = (value: boolean) => value;
+    const requireNull = (value: null) => value;
+
+    queryLog.length = 0;
+    const first = await paginator.paginate(qb, {
+      limit: 2,
+      noTotalCount: true,
+    });
+    expect(requireBoolean(first.hasPrevPage)).toBe(false);
+    expect(requireBoolean(first.hasNextPage)).toBe(true);
+    // @ts-expect-error Default-mode availability remains boolean, not null.
+    expect(requireNull(first.hasPrevPage)).toBe(false);
+    expect(queryLog).toHaveLength(2);
+
+    queryLog.length = 0;
+    const skipped = await paginator.paginate(qb, {
+      limit: 2,
+      pageCursor: first.nextPageCursor,
+      noTotalCount: true,
+      checkOppositePage: false,
+    });
+    expect(skipped.nodes.map((node) => node.id)).toEqual([3, 4]);
+    // @ts-expect-error An opt-out result cannot promise a boolean opposite flag.
+    expect(requireBoolean(skipped.hasPrevPage)).toBeNull();
+    expect(skipped.hasNextPage).toBe(true);
+    expect(skipped.totalCount).toBeNull();
+    expect(queryLog).toHaveLength(2);
+    expect(queryLog.some(({ sql }) => /LIMIT 1\b/.test(sql))).toBe(false);
+    expect(queryLog.some(({ sql }) => /COUNT\s*\(/i.test(sql))).toBe(false);
+
+    queryLog.length = 0;
+    const checked = await paginator.paginate(qb, {
+      limit: 2,
+      pageCursor: first.nextPageCursor,
+      noTotalCount: true,
+      checkOppositePage: true,
+    });
+    expect(requireBoolean(checked.hasPrevPage)).toBe(true);
+    expect(requireBoolean(checked.hasNextPage)).toBe(true);
+    expect(checked.nodes).toEqual(skipped.nodes);
+    expect(checked.prevPageCursor).toBe(skipped.prevPageCursor);
+    expect(checked.nextPageCursor).toBe(skipped.nextPageCursor);
+    expect(queryLog).toHaveLength(3);
+    expect(qb.getQueryAndParameters()).toEqual(original);
+  });
+
+  it("keeps raw projections typed and totals independent of optional opposite checks", async () => {
+    const paginator = new CursorPaginator(PageEvent, {
+      orderBy: { id: "ASC" },
+    });
+    const qb = db
+      .getRepository(PageEvent)
+      .createQueryBuilder("e")
+      .leftJoin("e.owner", "owner")
+      .select("e.id", "eventId");
+    const first = await paginator.paginateRaw<{ eventId: number }>(qb, {
+      limit: 2,
+      checkOppositePage: false,
+      noTotalCount: true,
+    });
+    expect(first.hasPrevPage).toBe(false);
+    expect(first.hasNextPage).toBe(true);
+
+    queryLog.length = 0;
+    const second = await paginateRaw<{ eventId: number }>(PageEvent, qb, {
+      orderBy: { id: "ASC" },
+      limit: 2,
+      pageCursor: first.nextPageCursor,
+      checkOppositePage: false,
+    });
+    const rowId: number = second.nodes[0].eventId;
+    expect(rowId).toBe(3);
+    expect(second.nodes).toEqual([{ eventId: 3 }, { eventId: 4 }]);
+    expect(second.totalCount).toBe(6);
+    expect(second.hasPrevPage).toBeNull();
+    expect(second.hasNextPage).toBe(true);
+    const requireBoolean = (value: boolean) => value;
+    // @ts-expect-error Explicit raw output generics must not erase nullable flags.
+    expect(requireBoolean(second.hasPrevPage)).toBeNull();
+    expect(queryLog).toHaveLength(2);
+    expect(queryLog.filter(({ sql }) => /COUNT\s*\(/i.test(sql))).toHaveLength(
+      1,
+    );
+    expect(queryLog.some(({ sql }) => /LIMIT 1\b/.test(sql))).toBe(false);
+
+    queryLog.length = 0;
+    const backward = await paginator.paginateRaw<{ eventId: number }>(qb, {
+      limit: 2,
+      pageCursor: second.prevPageCursor,
+      checkOppositePage: false,
+      noTotalCount: true,
+    });
+    expect(backward.nodes).toEqual(first.nodes);
+    expect(backward.hasPrevPage).toBe(false);
+    // @ts-expect-error Explicit instance raw generics retain nullable availability.
+    expect(requireBoolean(backward.hasNextPage)).toBeNull();
+    expect(queryLog).toHaveLength(1);
+    expect(queryLog.some(({ sql }) => /LIMIT 1\b|COUNT\s*\(/i.test(sql))).toBe(
+      false,
+    );
+  });
+
+  it("returns unknown opposite availability on empty PostgreSQL cursor pages without a probe", async () => {
+    const paginator = new CursorPaginator(PageEvent, {
+      orderBy: { id: "ASC" },
+    });
+    const qb = db.getRepository(PageEvent).createQueryBuilder("e");
+    const all = await paginator.paginate(qb, { noTotalCount: true });
+    for (const [pageCursor, hasPrevPage, hasNextPage] of [
+      [all.nextPageCursor, null, false],
+      [all.prevPageCursor, false, null],
+    ] as const) {
+      queryLog.length = 0;
+      const empty = await paginator.paginate(qb, {
+        limit: 2,
+        pageCursor,
+        checkOppositePage: false,
+        noTotalCount: true,
+      });
+      expect(empty).toEqual({
+        nodes: [],
+        totalCount: null,
+        hasPrevPage,
+        hasNextPage,
+        prevPageCursor: null,
+        nextPageCursor: null,
+      });
+      expect(queryLog).toHaveLength(1);
+      expect(queryLog.some(({ sql }) => /LIMIT 1\b/.test(sql))).toBe(false);
+    }
+  });
+
+  it("types standalone defaults as boolean and dynamic options as nullable", async () => {
+    const qb = db.getRepository(PageEvent).createQueryBuilder("e");
+    const requireBoolean = (value: boolean) => value;
+    const first = await paginate(PageEvent, qb, {
+      orderBy: { id: "ASC" },
+      limit: 2,
+      noTotalCount: true,
+    });
+    expect(requireBoolean(first.hasPrevPage)).toBe(false);
+    expect(requireBoolean(first.hasNextPage)).toBe(true);
+    const rawQuery = qb.clone().select("e.id", "eventId");
+    const raw = await paginateRaw<{ eventId: number }>(PageEvent, rawQuery, {
+      orderBy: { id: "ASC" },
+      limit: 2,
+      noTotalCount: true,
+      checkOppositePage: true,
+    });
+    expect(requireBoolean(raw.hasPrevPage)).toBe(false);
+    expect(requireBoolean(raw.hasNextPage)).toBe(true);
+
+    const fetch = (checkOppositePage: boolean) =>
+      paginate(PageEvent, qb, {
+        orderBy: { id: "ASC" },
+        limit: 2,
+        pageCursor: first.nextPageCursor,
+        noTotalCount: true,
+        checkOppositePage,
+      });
+    queryLog.length = 0;
+    const dynamic = await fetch(false);
+    // @ts-expect-error Dynamic configuration can disable the opposite check.
+    expect(requireBoolean(dynamic.hasPrevPage)).toBeNull();
+    expect(dynamic.hasNextPage).toBe(true);
+    expect(queryLog).toHaveLength(2);
   });
 });
