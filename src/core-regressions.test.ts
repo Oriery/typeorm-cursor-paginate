@@ -54,6 +54,8 @@ class CoreRecord {
 
   @OneToMany(() => CoreChild, (child) => child.record)
   children!: CoreChild[];
+
+  displayOwner?: CoreOwner | null;
 }
 
 @Entity()
@@ -573,6 +575,30 @@ describe("v3 core regressions with SQLite", () => {
       expect(qb.getQueryAndParameters()).toEqual(original);
     },
   );
+
+  it("preserves scoped mapped-one joins through complete entity traversal", async () => {
+    const qb = query().leftJoinAndMapOne(
+      "r.displayOwner",
+      CoreOwner,
+      "displayOwner",
+      "displayOwner.id = r.ownerId AND displayOwner.id = :visibleOwner",
+      { visibleOwner: 1 },
+    );
+    await traverse(byId(), qb, [1, 2, 3, 4, 5, 6]);
+    const first = await byId().paginate(qb, { limit: 5 });
+    expect(first.nodes.every((node) => node.displayOwner?.id === 1)).toBe(true);
+    const last = await byId().paginate(qb, {
+      limit: 5,
+      pageCursor: first.nextPageCursor,
+    });
+    expect(last.nodes[0].displayOwner).toBeNull();
+    expect(last.totalCount).toBe(6);
+    queries.length = 0;
+    await expect(byId().paginateRaw(qb, { limit: 2 })).rejects.toMatchObject({
+      code: "UNSUPPORTED_QUERY",
+    });
+    expect(queries).toHaveLength(0);
+  });
 
   it("allows composite-text-key relations used only as filters", async () => {
     await db.getRepository(CoreTextKey).save([
