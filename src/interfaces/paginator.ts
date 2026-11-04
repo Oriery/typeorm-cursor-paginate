@@ -1,65 +1,40 @@
-import { ObjectLiteral } from "typeorm";
+import type { FindOptionsOrderValue, ObjectLiteral } from "typeorm";
 
-export type Order = "ASC" | "DESC";
-
+export type Order = FindOptionsOrderValue;
+/** Root column property paths, including dotted embedded paths; checked against metadata. */
 export type OrderBy<TEntity extends ObjectLiteral> = {
   [TKey in keyof TEntity]?: Order;
-};
+} & { [propertyPath: string]: Order | undefined };
 
-export type Cursor<TEntity extends ObjectLiteral> = {
-  [TKey in keyof TEntity]?: any;
-};
-
-export type DirectionalCursor<TEntity extends ObjectLiteral> = {
-  cursor: Cursor<TEntity>;
-  direction: "next" | "prev";
-};
-
-export interface Paginated<TEntity extends ObjectLiteral> {
-  /**
-   * The total number of nodes that match the query.
-   *
-   * The value is null if the total count is not calculated
-   *  (when option `noTotalCount` is set to true).
-   */
-  readonly totalCount: number | null;
-  /**
-   * Indicates whether a previous page is available.
-   *
-   * Note: In rare scenarios, this value may be `true` even when no previous page exists. This can occur if
-   * the current page was retrieved using a cursor, but all nodes prior to that cursor have been deleted.
-   */
-  readonly hasPrevPage: boolean;
-  /**
-   * Indicates whether a next page is available.
-   *
-   * Note: In rare scenarios, this value may be `true` even when no next page exists. This can occur if
-   * the current page was retrieved using a cursor, but all nodes after that cursor have been deleted.
-   */
-  readonly hasNextPage: boolean;
-  /**
-   * The cursor to the previous page.
-   *
-   * It is a string even if hasPrevPage is false.
-   *
-   * It MIGHT be null if no nodes are found in the current page.
-   */
-  readonly prevPageCursor: string | null;
-  /**
-   * The cursor to the next page.
-   *
-   * It is a string even if hasNextPage is false.
-   *
-   * It MIGHT be null if no nodes are found in the current page.
-   */
-  readonly nextPageCursor: string | null;
-  /**
-   * The list of nodes in the current page.
-   */
-  readonly nodes: TEntity[];
+export interface NormalizedOrder {
+  key: string;
+  direction: "ASC" | "DESC";
+  nulls: "FIRST" | "LAST";
 }
 
-export interface CursorTransformer<TEntity extends ObjectLiteral> {
-  parse(text: string): Cursor<TEntity>;
-  stringify(cursor: Cursor<TEntity>): string;
+/** Database representations, never hydrated entity/column-transformer values. */
+export type CursorValue = string | number | boolean | null;
+export interface CursorEnvelope {
+  version: 3;
+  direction: "next" | "prev";
+  order: NormalizedOrder[];
+  values: CursorValue[];
+}
+
+export interface Paginated<TNode> {
+  /** Matching root rows before the cursor; null when noTotalCount is true. */
+  readonly totalCount: number | null;
+  /** Availability at the time of the corresponding read, not a snapshot guarantee. */
+  readonly hasPrevPage: boolean;
+  readonly hasNextPage: boolean;
+  /** Nonempty pages retain both boundary cursors, even when a flag is false. */
+  readonly prevPageCursor: string | null;
+  readonly nextPageCursor: string | null;
+  readonly nodes: TNode[];
+}
+
+/** Encoding only. Parsed data is always validated by the paginator. */
+export interface CursorTransformer {
+  parse(text: string): unknown;
+  stringify(cursor: CursorEnvelope): string;
 }

@@ -1,6 +1,6 @@
 {
   "name": "typeorm-cursor-paginate",
-  "version": "2.2.0",
+  "version": "3.0.0-next.0",
   "description": "Cursor-based pagination with directional cursors.",
   "keywords": [
     "directional",

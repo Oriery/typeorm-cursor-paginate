@@ -8,6 +8,7 @@ import {
 
 import { CursorPaginator } from "./cursor-paginator";
 import { JsonTransformer } from "./transformers/json-transformer";
+import { paginate } from "./paginate";
 import type { OrderBy } from "./interfaces/paginator";
 
 @Entity()
@@ -23,6 +24,9 @@ class ValidationRecord {
 
   @Column({ type: "boolean" })
   active!: boolean;
+
+  @Column({ type: "real" })
+  score!: number;
 }
 
 @Entity()
@@ -70,9 +74,9 @@ describe("v3 input validation before SQL", () => {
     });
     await source.initialize();
     await source.getRepository(ValidationRecord).insert([
-      { id: 1, label: "alpha", rank: null, active: false },
-      { id: 2, label: "beta", rank: 1, active: true },
-      { id: 3, label: "gamma", rank: 1, active: true },
+      { id: 1, label: "alpha", rank: null, active: false, score: 1e100 },
+      { id: 2, label: "beta", rank: 1, active: true, score: 2e100 },
+      { id: 3, label: "gamma", rank: 1, active: true, score: 3e100 },
     ]);
   });
 
@@ -212,7 +216,10 @@ describe("v3 input validation before SQL", () => {
     { id: 2 },
     { id: false },
     { id: null },
+    { id: undefined },
     { id: { direction: "ASC", nulls: "MIDDLE" } },
+    { id: { direction: null } },
+    { id: { nulls: null } },
     { id: { direction: "ASC", extra: true } },
     [{ id: "ASC" }, { id: "DESC" }],
     { missing: "ASC", id: "ASC" },
@@ -238,11 +245,64 @@ describe("v3 input validation before SQL", () => {
     );
   });
 
+  it("rejects the removed positional raw argument before SQL", async () => {
+    const instance = paginator();
+    await inputError(
+      () =>
+        Reflect.apply(instance.paginate.bind(instance), undefined, [
+          query(),
+          { limit: 1 },
+          true,
+        ]) as unknown,
+      "UNSUPPORTED_QUERY",
+    );
+  });
+
+  it("rejects the standalone removed positional raw argument before SQL", async () => {
+    await inputError(
+      () =>
+        Reflect.apply(paginate, undefined, [
+          ValidationRecord,
+          query(),
+          { limit: 1, orderBy: { id: "ASC" } },
+          true,
+        ]) as unknown,
+      "UNSUPPORTED_QUERY",
+    );
+  });
+
   it("allows omitted limit as an explicit unlimited traversal", async () => {
     const page = await paginator().paginate(query());
     expect(page.nodes.map(({ id }) => id)).toEqual([1, 2, 3]);
     expect(page.hasPrevPage).toBe(false);
     expect(page.hasNextPage).toBe(false);
+  });
+
+  it("round-trips SQLite REAL values using their full double precision range", async () => {
+    const real = new CursorPaginator(ValidationRecord, {
+      orderBy: { score: "ASC", id: "ASC" },
+    });
+    let page = await real.paginate(query(), { limit: 1 });
+    const forwards = page.nodes.map(({ id }) => id);
+    while (page.hasNextPage) {
+      page = await real.paginate(query(), {
+        limit: 1,
+        pageCursor: page.nextPageCursor,
+      });
+      forwards.push(...page.nodes.map(({ id }) => id));
+      if (forwards.length > 3) throw new Error("Traversal did not end");
+    }
+    expect(forwards).toEqual([1, 2, 3]);
+    const backwards = page.nodes.map(({ id }) => id);
+    while (page.hasPrevPage) {
+      page = await real.paginate(query(), {
+        limit: 1,
+        pageCursor: page.prevPageCursor,
+      });
+      backwards.unshift(...page.nodes.map(({ id }) => id));
+      if (backwards.length > 3) throw new Error("Traversal did not end");
+    }
+    expect(backwards).toEqual([1, 2, 3]);
   });
 
   it("emits an order-bound versioned cursor and accepts its own output", async () => {
@@ -273,6 +333,27 @@ describe("v3 input validation before SQL", () => {
     );
   });
 
+  it.each([
+    undefined,
+    NaN,
+    Infinity,
+    -Infinity,
+    1n,
+    new Date("2020-01-01T00:00:00.000Z"),
+    { value: 1 },
+  ])("rejects custom-decoded non-JSON integer value %s", async (value) => {
+    const custom = new CursorPaginator(ValidationRecord, {
+      orderBy: { id: "ASC" },
+      cursorTransformer: {
+        parse: () => envelope({ values: [value] }),
+        stringify: JSON.stringify,
+      },
+    });
+    await inputError(() =>
+      custom.paginate(query(), { pageCursor: "v3:custom" }),
+    );
+  });
+
   it("wraps custom parser failures in the stable input error", async () => {
     const custom = new CursorPaginator(ValidationRecord, {
       orderBy: { id: "ASC" },
@@ -287,6 +368,26 @@ describe("v3 input validation before SQL", () => {
       custom.paginate(query(), { pageCursor: "v3:custom" }),
     );
   });
+
+  it.each([
+    ["values", envelope({ values: Array.from({ length: 1 }) })],
+    ["sparse values", envelope({ values: new Array<unknown>(1) })],
+    ["sparse order", envelope({ order: new Array<unknown>(1) })],
+  ])(
+    "rejects custom-decoded %s without bypassing validation",
+    async (_name, decoded) => {
+      const custom = new CursorPaginator(ValidationRecord, {
+        orderBy: { id: "ASC" },
+        cursorTransformer: {
+          parse: () => decoded,
+          stringify: JSON.stringify,
+        },
+      });
+      await inputError(() =>
+        custom.paginate(query(), { pageCursor: "v3:custom" }),
+      );
+    },
+  );
 
   it("supports a JSON transformer without bypassing envelope validation", async () => {
     const custom = new CursorPaginator(ValidationRecord, {
@@ -326,4 +427,26 @@ describe("v3 input validation before SQL", () => {
     expect(queries.every((sql) => !sql.includes(hostile))).toBe(true);
     expect(await source.getRepository(ValidationRecord).count()).toBe(3);
   });
+
+  it.each(["a\u0000b", "\ud800", "\udfff"])(
+    "rejects text that cannot round-trip as database UTF-8: %j",
+    async (label) => {
+      const text = new CursorPaginator(ValidationRecord, {
+        orderBy: { label: "ASC", id: "ASC" },
+      });
+      await inputError(() =>
+        text.paginate(query(), {
+          pageCursor: token(
+            envelope({
+              order: [
+                { key: "label", direction: "ASC", nulls: "LAST" },
+                ...idOrder,
+              ],
+              values: [label, 0],
+            }),
+          ),
+        }),
+      );
+    },
+  );
 });

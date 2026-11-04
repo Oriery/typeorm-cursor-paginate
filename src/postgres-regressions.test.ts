@@ -32,11 +32,17 @@ class PageEvent {
   @Column({ type: "timestamptz", precision: 6, name: "happened_at" })
   happenedAt!: Date;
 
+  @Column({ type: "timestamp", precision: 6, nullable: true })
+  optionalAt!: Date | null;
+
   @Column("bigint")
   sequence!: string;
 
   @Column({ type: "numeric", precision: 30, scale: 12 })
   amount!: string;
+
+  @Column({ type: "real", default: 0 })
+  reading!: number;
 
   @Column({ type: "text", nullable: true })
   label!: string | null;
@@ -85,6 +91,7 @@ postgres("PostgreSQL core correctness (isolated database)", () => {
   let db: DataSource;
   const database = `paginator_${randomUUID().replaceAll("-", "")}`;
   const statements: string[] = [];
+  const queryLog: { sql: string; parameters: unknown[] }[] = [];
 
   beforeAll(async () => {
     admin = await new DataSource({
@@ -102,7 +109,13 @@ postgres("PostgreSQL core correctness (isolated database)", () => {
       extra: { options: "-c timezone=Europe/Berlin" },
       logging: ["query"],
       logger: {
-        logQuery: (query) => statements.push(query),
+        logQuery: (query, parameters) => {
+          statements.push(query);
+          queryLog.push({
+            sql: query,
+            parameters: Array.isArray(parameters) ? parameters : [],
+          });
+        },
         logQueryError: () => undefined,
         logQuerySlow: () => undefined,
         logSchemaBuild: () => undefined,
@@ -198,6 +211,7 @@ postgres("PostgreSQL core correctness (isolated database)", () => {
       { id: 4, eventId: 2, text: "four" },
     ]);
     statements.length = 0;
+    queryLog.length = 0;
   });
 
   async function traverse(
@@ -240,9 +254,9 @@ postgres("PostgreSQL core correctness (isolated database)", () => {
   it.each(["observedAt", "happenedAt"] as const)(
     "preserves six-digit %s boundaries across DST, timezone differences, ties and both directions",
     async (column) => {
-      expect((await db.query("SHOW timezone"))[0].TimeZone).toBe(
-        "Europe/Berlin",
-      );
+      expect(
+        (await db.query<{ TimeZone: string }[]>("SHOW timezone"))[0].TimeZone,
+      ).toBe("Europe/Berlin");
       expect(process.env.TZ).toBe("America/Los_Angeles");
       const hydrated = await db
         .getRepository(PageEvent)
@@ -253,6 +267,45 @@ postgres("PostgreSQL core correctness (isolated database)", () => {
       await traverse({ [column]: "DESC", id: "ASC" }, [6, 5, 3, 4, 2, 1]);
     },
   );
+
+  it.each(["infinity", "-infinity", "0001-01-01 BC", "10000-01-01"])(
+    "rejects unsupported stored timestamp %s rather than converting it to a different boundary",
+    async (value) => {
+      await db.query('UPDATE page_event SET "optionalAt" = $1 WHERE id = 1', [
+        value,
+      ]);
+      const paginator = new CursorPaginator(PageEvent, {
+        orderBy: { optionalAt: "ASC", id: "ASC" },
+      });
+      await expect(
+        paginator.paginate(
+          db.getRepository(PageEvent).createQueryBuilder("e"),
+          { limit: 1 },
+        ),
+      ).rejects.toMatchObject({
+        name: "PaginationInputError",
+        code: "UNSUPPORTED_VALUE",
+      });
+    },
+  );
+
+  it("checks zoned timestamp year limits in UTC rather than the database timezone", async () => {
+    // The session sees AD year 1 while the actual UTC instant falls in BC year 1.
+    await db.query(
+      "UPDATE page_event SET happened_at = '0001-01-01 00:30:00+01'::timestamptz WHERE id = 1",
+    );
+    const paginator = new CursorPaginator(PageEvent, {
+      orderBy: { happenedAt: "ASC", id: "ASC" },
+    });
+    await expect(
+      paginator.paginate(db.getRepository(PageEvent).createQueryBuilder("e"), {
+        limit: 1,
+      }),
+    ).rejects.toMatchObject({
+      name: "PaginationInputError",
+      code: "UNSUPPORTED_VALUE",
+    });
+  });
 
   it.each(["sequence", "amount"] as const)(
     "retains exact %s database values above JavaScript number precision",
@@ -267,6 +320,47 @@ postgres("PostgreSQL core correctness (isolated database)", () => {
           : "123456789012345.000000000001",
       );
       await traverse({ [column]: "DESC", id: "ASC" }, [6, 5, 4, 3, 2, 1]);
+    },
+  );
+
+  it("round-trips PostgreSQL real maximum and subnormal values in both directions", async () => {
+    await db.query(`
+      UPDATE page_event AS event SET reading = sample.reading
+      FROM (VALUES
+        (1, '-3.4028234663852886e38'::real),
+        (2, '-1.401298464324817e-45'::real),
+        (3, '0'::real),
+        (4, '1.401298464324817e-45'::real),
+        (5, '1'::real),
+        (6, '3.4028234663852886e38'::real)
+      ) AS sample(id, reading)
+      WHERE event.id = sample.id
+    `);
+    await traverse({ reading: "ASC", id: "ASC" }, [1, 2, 3, 4, 5, 6]);
+    await traverse({ reading: "DESC", id: "ASC" }, [6, 5, 4, 3, 2, 1]);
+  });
+
+  it.each([1e-100, -1e-100])(
+    "rejects underflowing real cursor value %p before SQL",
+    async (invalid) => {
+      const paginator = new CursorPaginator(PageEvent, {
+        orderBy: { reading: "ASC", id: "ASC" },
+      });
+      const qb = db.getRepository(PageEvent).createQueryBuilder("e");
+      const first = await paginator.paginate(qb, { limit: 1 });
+      const payload = JSON.parse(
+        Buffer.from(first.nextPageCursor!.slice(3), "base64url").toString(),
+      ) as { values: unknown[] };
+      payload.values[0] = invalid;
+      const token = `v3:${Buffer.from(JSON.stringify(payload)).toString("base64url")}`;
+      statements.length = 0;
+      await expect(
+        paginator.paginate(qb, { limit: 1, pageCursor: token }),
+      ).rejects.toMatchObject({
+        name: "PaginationInputError",
+        code: "INVALID_CURSOR",
+      });
+      expect(statements).toHaveLength(0);
     },
   );
 
@@ -292,6 +386,22 @@ postgres("PostgreSQL core correctness (isolated database)", () => {
       await traverse({ label: { direction, nulls }, id: "DESC" }, [
         ...expected,
       ]);
+    },
+  );
+
+  it.each([
+    ["asc", [3, 2, 5, 6, 4, 1]],
+    [1, [3, 2, 5, 6, 4, 1]],
+    [{ direction: "asc", nulls: "last" }, [3, 2, 5, 6, 4, 1]],
+    [{ nulls: "LAST" }, [3, 2, 5, 6, 4, 1]],
+    ["desc", [6, 5, 3, 2, 4, 1]],
+    [-1, [6, 5, 3, 2, 4, 1]],
+    [{ direction: "desc", nulls: "last" }, [6, 5, 3, 2, 4, 1]],
+    [{ direction: "DESC" }, [6, 5, 3, 2, 4, 1]],
+  ] as const)(
+    "normalizes PostgreSQL ordering form %p",
+    async (direction, expected) => {
+      await traverse({ label: direction, id: "DESC" }, [...expected]);
     },
   );
 
@@ -386,5 +496,184 @@ postgres("PostgreSQL core correctness (isolated database)", () => {
       { name: "PaginationInputError" },
     );
     expect(statements).toHaveLength(before);
+  });
+
+  it("rejects raw aliases that overwrite automatically named root columns", async () => {
+    const paginator = new CursorPaginator(PageEvent, {
+      orderBy: { id: "ASC" },
+    });
+    const qb = db
+      .getRepository(PageEvent)
+      .createQueryBuilder("e")
+      .innerJoin("e.owner", "o")
+      .select("e")
+      .addSelect("o.name", "e_id");
+    statements.length = 0;
+    await expect(paginator.paginateRaw(qb, { limit: 1 })).rejects.toMatchObject(
+      { name: "PaginationInputError", code: "UNSUPPORTED_QUERY" },
+    );
+    expect(statements).toHaveLength(0);
+  });
+
+  it.each([
+    ["sequence", "9223372036854775808"],
+    ["sequence", "-9223372036854775809"],
+    ["amount", "1234567890123456789.000000000001"],
+    ["amount", "1.0000000000001"],
+    ["amount", "1e1000000"],
+    ["id", 2147483648],
+    ["id", -2147483649],
+  ] as const)(
+    "rejects out-of-storage-range %s cursor value %p before SQL",
+    async (column, invalid) => {
+      const paginator = new CursorPaginator(PageEvent, {
+        orderBy:
+          column === "id" ? { id: "ASC" } : { [column]: "ASC", id: "ASC" },
+      });
+      const qb = db.getRepository(PageEvent).createQueryBuilder("e");
+      const first = await paginator.paginate(qb, { limit: 1 });
+      const payload = JSON.parse(
+        Buffer.from(first.nextPageCursor!.slice(3), "base64").toString(),
+      ) as { values: unknown[] };
+      payload.values[0] = invalid;
+      const token = `v3:${Buffer.from(JSON.stringify(payload)).toString("base64").replace(/=+$/, "")}`;
+      statements.length = 0;
+      await expect(
+        paginator.paginate(qb, { limit: 1, pageCursor: token }),
+      ).rejects.toMatchObject({ name: "PaginationInputError" });
+      expect(statements).toHaveLength(0);
+    },
+  );
+
+  it.each(["observedAt", "happenedAt"] as const)(
+    "rejects invalid %s calendar and precision fields before SQL",
+    async (column) => {
+      const paginator = new CursorPaginator(PageEvent, {
+        orderBy: { [column]: "ASC", id: "ASC" },
+      });
+      const qb = db.getRepository(PageEvent).createQueryBuilder("e");
+      const first = await paginator.paginate(qb, { limit: 1 });
+      const payload = JSON.parse(
+        Buffer.from(first.nextPageCursor!.slice(3), "base64").toString(),
+      ) as { values: unknown[] };
+      const valid = payload.values[0] as string;
+      const invalidValues = [
+        valid.replace(/^\d{4}-\d{2}-\d{2}/, "2024-02-30"),
+        valid.replace(/^\d{4}-\d{2}-\d{2}/, "2024-13-01"),
+        valid.replace(/^\d{4}/, "0000"),
+        valid.replace(/^\d{4}/, "10000"),
+        valid.replace(/\d{2}:\d{2}:\d{2}/, "24:00:01"),
+        valid.replace(/\d{2}:\d{2}:\d{2}/, "12:60:00"),
+        valid.replace(/\.\d+/, ".1234567"),
+        "infinity",
+        "-infinity",
+      ];
+      if (column === "happenedAt")
+        invalidValues.push(
+          valid.replace(/(?:Z|[+-]\d{2}(?::?\d{2})?)$/, "+25:00"),
+        );
+      for (const invalid of invalidValues) {
+        expect(invalid).not.toBe(valid);
+        payload.values[0] = invalid;
+        const token = `v3:${Buffer.from(JSON.stringify(payload)).toString("base64").replace(/=+$/, "")}`;
+        statements.length = 0;
+        await expect(
+          paginator.paginate(qb, { limit: 1, pageCursor: token }),
+        ).rejects.toMatchObject({ name: "PaginationInputError" });
+        expect(statements).toHaveLength(0);
+      }
+    },
+  );
+
+  it("bounds page queries and measures indexed probes and joined-row fan-out", async () => {
+    await db.query(`
+      INSERT INTO page_event
+        (id, observed_at, happened_at, sequence, amount, label, score, "ownerId")
+      SELECT id, TIMESTAMP '2025-01-01', TIMESTAMPTZ '2025-01-01 00:00:00+00',
+        id, id, 'bulk', id + 1000, 1
+      FROM generate_series(100, 10100) AS id
+    `);
+    await db.query("ANALYZE page_event");
+    const paginator = new CursorPaginator(PageEvent, {
+      orderBy: { id: "ASC" },
+    });
+    const qb = db
+      .getRepository(PageEvent)
+      .createQueryBuilder("e")
+      .leftJoinAndSelect("e.notes", "n");
+    queryLog.length = 0;
+    const first = await paginator.paginate(qb, { limit: 2 });
+    const firstQueries = [...queryLog];
+    expect(first.nodes.map((node) => node.id)).toEqual([1, 2]);
+    expect(first.totalCount).toBe(10_007);
+    expect(firstQueries).toHaveLength(3);
+    expect(
+      firstQueries.filter(({ sql }) => /COUNT\s*\(/i.test(sql)),
+    ).toHaveLength(1);
+
+    type Plan = { "Node Type": string; "Actual Rows": number; Plans?: Plan[] };
+    async function explain(query: { sql: string; parameters: unknown[] }) {
+      const result = await db.query<{ "QUERY PLAN": { Plan: Plan }[] }[]>(
+        `EXPLAIN (ANALYZE, FORMAT JSON) ${query.sql}`,
+        query.parameters,
+      );
+      return result[0]["QUERY PLAN"][0].Plan;
+    }
+    const pageQuery = firstQueries.find(({ sql }) => /LIMIT 3\b/.test(sql));
+    const hydrationQuery = firstQueries.find(
+      ({ sql }) => !/LIMIT|COUNT\s*\(/i.test(sql),
+    );
+    expect(pageQuery).toBeDefined();
+    expect(hydrationQuery).toBeDefined();
+    expect((await explain(pageQuery!))["Actual Rows"]).toBe(3);
+    expect((await explain(hydrationQuery!))["Actual Rows"]).toBe(4);
+    expect(first.nodes[0].notes).toHaveLength(3);
+    expect(first.nodes[1].notes).toHaveLength(1);
+
+    queryLog.length = 0;
+    const second = await paginator.paginate(qb, {
+      limit: 2,
+      pageCursor: first.nextPageCursor,
+      noTotalCount: true,
+    });
+    const secondQueries = [...queryLog];
+    expect(second.nodes.map((node) => node.id)).toEqual([3, 4]);
+    expect(second.totalCount).toBeNull();
+    expect(second.hasPrevPage).toBe(true);
+    expect(second.hasNextPage).toBe(true);
+    expect(secondQueries).toHaveLength(3);
+    expect(secondQueries.some(({ sql }) => /COUNT\s*\(/i.test(sql))).toBe(
+      false,
+    );
+    const probe = secondQueries.find(({ sql }) => /LIMIT 1\b/.test(sql));
+    expect(probe).toBeDefined();
+    const plan = await explain(probe!);
+    function nodes(node: Plan): Plan[] {
+      return [node, ...(node.Plans ?? []).flatMap(nodes)];
+    }
+    expect(plan["Actual Rows"]).toBe(1);
+    expect(nodes(plan).some((node) => /Index/.test(node["Node Type"]))).toBe(
+      true,
+    );
+
+    const rawQuery = db
+      .getRepository(PageEvent)
+      .createQueryBuilder("e")
+      .select("e.id", "id");
+    queryLog.length = 0;
+    const firstRaw = await paginator.paginateRaw<{ id: number }>(rawQuery, {
+      limit: 2,
+    });
+    expect(queryLog).toHaveLength(2);
+    queryLog.length = 0;
+    const secondRaw = await paginator.paginateRaw<{ id: number }>(rawQuery, {
+      limit: 2,
+      pageCursor: firstRaw.nextPageCursor,
+      noTotalCount: true,
+    });
+    expect(secondRaw.nodes.map((node) => node.id)).toEqual([3, 4]);
+    expect(secondRaw.totalCount).toBeNull();
+    expect(queryLog).toHaveLength(2);
+    expect(queryLog.some(({ sql }) => /COUNT\s*\(/i.test(sql))).toBe(false);
   });
 });

@@ -10,7 +10,7 @@ import {
   type SelectQueryBuilder,
 } from "typeorm";
 import { CursorPaginator } from "./cursor-paginator";
-import type { OrderBy, Paginated } from "./interfaces/paginator";
+import type { Paginated } from "./interfaces/paginator";
 
 @Entity()
 class CoreOwner {
@@ -19,6 +19,9 @@ class CoreOwner {
 
   @Column({ type: String })
   name!: string;
+
+  @OneToMany(() => CoreTextKey, (item) => item.owner)
+  textKeys!: CoreTextKey[];
 }
 
 class CoreDetail {
@@ -36,6 +39,9 @@ class CoreRecord {
 
   @Column({ type: Number })
   rank!: number;
+
+  @Column({ type: String, select: false, default: "hidden-boundary" })
+  hidden!: string;
 
   @Column({ type: Number })
   ownerId!: number;
@@ -62,10 +68,60 @@ class CoreChild {
   record!: CoreRecord;
 }
 
+@Entity()
+class CoreComposite {
+  @PrimaryColumn({ type: Number })
+  tenantId!: number;
+
+  @PrimaryColumn({ type: Number })
+  id!: number;
+
+  @Column({ type: String })
+  label!: string;
+}
+
+@Entity()
+class CoreTextKey {
+  @Column({ type: Number, default: 1 })
+  ownerId!: number;
+
+  @ManyToOne(() => CoreOwner)
+  owner!: CoreOwner;
+
+  @PrimaryColumn({ type: String })
+  scope!: string;
+
+  @PrimaryColumn({ type: String })
+  key!: string;
+
+  @Column({ type: String })
+  label!: string;
+}
+
+class CoreIdentity {
+  @PrimaryColumn({ type: Number })
+  tenant!: number;
+
+  @PrimaryColumn({ type: Number })
+  id!: number;
+}
+
+@Entity()
+class CoreEmbeddedKey {
+  @Column(() => CoreIdentity)
+  identity!: CoreIdentity;
+
+  @Column({ type: String })
+  label!: string;
+}
+
 const queries: { sql: string; parameters: unknown[] }[] = [];
 const logger: Logger = {
   logQuery: (sql, parameters) => {
-    queries.push({ sql, parameters: parameters ?? [] });
+    queries.push({
+      sql,
+      parameters: Array.isArray(parameters) ? parameters : [],
+    });
   },
   logQueryError: () => undefined,
   logQuerySlow: () => undefined,
@@ -126,7 +182,14 @@ describe("v3 core regressions with SQLite", () => {
     db = await new DataSource({
       type: "better-sqlite3",
       database: ":memory:",
-      entities: [CoreRecord, CoreOwner, CoreChild],
+      entities: [
+        CoreRecord,
+        CoreOwner,
+        CoreChild,
+        CoreComposite,
+        CoreTextKey,
+        CoreEmbeddedKey,
+      ],
       synchronize: true,
       logging: ["query"],
       logger,
@@ -138,6 +201,9 @@ describe("v3 core regressions with SQLite", () => {
   });
 
   beforeEach(async () => {
+    await db.getRepository(CoreComposite).clear();
+    await db.getRepository(CoreTextKey).clear();
+    await db.getRepository(CoreEmbeddedKey).clear();
     await db.getRepository(CoreChild).clear();
     await db.getRepository(CoreRecord).clear();
     await db.getRepository(CoreOwner).clear();
@@ -175,6 +241,8 @@ describe("v3 core regressions with SQLite", () => {
     const qb = query()
       .innerJoin("r.owner", "o", "o.id = :cursor__id", { cursor__id: 1 })
       .where("r.ownerId = :cursor__id")
+      .andWhere("r.ownerId = :__paginator_0", { __paginator_0: 1 })
+      .andWhere("r.ownerId = :__paginator_1", { __paginator_1: 1 })
       .andWhere((subquery) => {
         const sql = subquery
           .subQuery()
@@ -268,18 +336,18 @@ describe("v3 core regressions with SQLite", () => {
     ["DESC", false],
     ["desc", false],
     [-1, false],
+    [{}, true],
+    [{ nulls: "first" }, true],
     [{ direction: "ASC" }, true],
     [{ direction: "asc" }, true],
-    [{ direction: 1 }, true],
     [{ direction: "DESC" }, false],
     [{ direction: "desc" }, false],
-    [{ direction: -1 }, false],
   ];
   it.each(directions)(
     "traverses accepted direction %j and mixed-direction ties",
     async (direction, ascending) => {
       const paginator = new CursorPaginator(CoreRecord, {
-        orderBy: { rank: direction, id: "DESC" } as OrderBy<CoreRecord>,
+        orderBy: { rank: direction, id: "DESC" },
       });
       await traverse(
         paginator,
@@ -294,6 +362,8 @@ describe("v3 core regressions with SQLite", () => {
     ["ASC", "LAST", [6, 3, 2, 4, 5, 1]],
     ["DESC", "FIRST", [5, 1, 4, 6, 3, 2]],
     ["DESC", "LAST", [4, 6, 3, 2, 5, 1]],
+    ["asc", "first", [5, 1, 6, 3, 2, 4]],
+    ["desc", "last", [4, 6, 3, 2, 5, 1]],
   ] as const)(
     "traverses nullable renamed columns %s NULLS %s in both directions",
     async (direction, nulls, expected) => {
@@ -301,7 +371,7 @@ describe("v3 core regressions with SQLite", () => {
         orderBy: {
           name: { direction, nulls },
           id: "DESC",
-        } as OrderBy<CoreRecord>,
+        },
       });
       await traverse(paginator, query(), [...expected], 1);
     },
@@ -312,9 +382,214 @@ describe("v3 core regressions with SQLite", () => {
       orderBy: {
         "detail.label": { direction: "ASC", nulls: "LAST" },
         id: "ASC",
-      } as OrderBy<CoreRecord>,
+      },
     });
     await traverse(paginator, query(), [2, 3, 1, 4, 5, 6], 1);
+  });
+
+  it("requires every composite primary column and traverses a complete unique tuple", async () => {
+    const repo = db.getRepository(CoreComposite);
+    await repo.save([
+      { tenantId: 1, id: 1, label: "same" },
+      { tenantId: 1, id: 2, label: "same" },
+      { tenantId: 2, id: 1, label: "same" },
+      { tenantId: 2, id: 2, label: "same" },
+    ]);
+    const qb = repo.createQueryBuilder("composite");
+    queries.length = 0;
+    const incomplete = new CursorPaginator(CoreComposite, {
+      orderBy: { id: "ASC" },
+    });
+    await expect(incomplete.paginate(qb, { limit: 1 })).rejects.toMatchObject({
+      name: "PaginationInputError",
+    });
+    expect(queries).toHaveLength(0);
+    const paginator = new CursorPaginator(CoreComposite, {
+      orderBy: { label: "ASC", tenantId: "ASC", id: "DESC" },
+    });
+    const identify = (node: CoreComposite) => `${node.tenantId}:${node.id}`;
+    const forward: string[] = [];
+    let page = await paginator.paginate(qb, { limit: 1 });
+    let visits = 0;
+    for (;;) {
+      forward.push(...page.nodes.map(identify));
+      if (!page.hasNextPage) break;
+      if (++visits > 4) throw new Error("Composite traversal did not end");
+      page = await paginator.paginate(qb, {
+        limit: 1,
+        pageCursor: page.nextPageCursor,
+      });
+    }
+    expect(forward).toEqual(["1:2", "1:1", "2:2", "2:1"]);
+    const backward = page.nodes.map(identify);
+    while (page.hasPrevPage) {
+      if (++visits > 8) throw new Error("Composite traversal did not end");
+      page = await paginator.paginate(qb, {
+        limit: 1,
+        pageCursor: page.prevPageCursor,
+      });
+      backward.unshift(...page.nodes.map(identify));
+    }
+    expect(backward).toEqual(forward);
+  });
+
+  it("does not conflate composite text identities containing TypeORM's hydration separator", async () => {
+    const repo = db.getRepository(CoreTextKey);
+    await repo.save([
+      { scope: "a_b", key: "c", label: "first" },
+      { scope: "a", key: "b_c", label: "second" },
+      { scope: "z", key: "last", label: "last" },
+    ]);
+    const qb = repo.createQueryBuilder("item");
+    const paginator = new CursorPaginator(CoreTextKey, {
+      orderBy: { scope: "ASC", key: "ASC" },
+    });
+    const first = await paginator.paginate(qb, { limit: 2 });
+    expect(first.totalCount).toBe(3);
+    expect(first.nodes.map(({ scope, key }) => [scope, key])).toEqual([
+      ["a", "b_c"],
+      ["a_b", "c"],
+    ]);
+    const last = await paginator.paginate(qb, {
+      limit: 2,
+      pageCursor: first.nextPageCursor,
+    });
+    expect(last.nodes.map(({ scope, key }) => [scope, key])).toEqual([
+      ["z", "last"],
+    ]);
+    const back = await paginator.paginate(qb, {
+      limit: 2,
+      pageCursor: last.prevPageCursor,
+    });
+    expect(back.nodes).toEqual(first.nodes);
+  });
+
+  it("counts composite text identities without concatenation collisions", async () => {
+    const repo = db.getRepository(CoreTextKey);
+    await repo.save([
+      { scope: "a|;|b", key: "c", label: "first" },
+      { scope: "a", key: "b|;|c", label: "second" },
+    ]);
+    const paginator = new CursorPaginator(CoreTextKey, {
+      orderBy: { scope: "ASC", key: "ASC" },
+    });
+    const qb = repo
+      .createQueryBuilder("item")
+      .leftJoinAndSelect("item.owner", "owner");
+    const entity = await paginator.paginate(qb, { limit: 2 });
+    const raw = await paginator.paginateRaw(qb, { limit: 2 });
+    expect(entity.totalCount).toBe(2);
+    expect(raw.totalCount).toBe(2);
+    expect(entity.nodes).toHaveLength(2);
+  });
+
+  it("removes private embedded PK containers from partial projections", async () => {
+    const repo = db.getRepository(CoreEmbeddedKey);
+    await repo.save([
+      { identity: { tenant: 1, id: 1 }, label: "first" },
+      { identity: { tenant: 1, id: 2 }, label: "second" },
+    ]);
+    const paginator = new CursorPaginator(CoreEmbeddedKey, {
+      orderBy: { "identity.tenant": "ASC", "identity.id": "ASC" },
+    });
+    const qb = repo.createQueryBuilder("item").select("item.label");
+    const first = await paginator.paginate(qb, { limit: 1 });
+    expect(
+      first.nodes.map((node) => JSON.parse(JSON.stringify(node)) as unknown),
+    ).toStrictEqual([{ label: "first" }]);
+    const second = await paginator.paginate(qb, {
+      limit: 1,
+      pageCursor: first.nextPageCursor,
+    });
+    expect(
+      second.nodes.map((node) => JSON.parse(JSON.stringify(node)) as unknown),
+    ).toStrictEqual([{ label: "second" }]);
+  });
+
+  it("hydrates more than one thousand roots in explicit unlimited mode", async () => {
+    const added = Array.from({ length: 1100 }, (_, index) => ({
+      id: 100 + index,
+      name: "bulk",
+      rank: index % 3,
+      ownerId: 1,
+      detail: { label: "bulk" },
+    }));
+    for (let index = 0; index < added.length; index += 200) {
+      await db
+        .getRepository(CoreRecord)
+        .insert(added.slice(index, index + 200));
+    }
+    const expected = [1, 2, 3, 4, 5, 6, ...added.map((node) => node.id)];
+    const qb = query();
+    const original = qb.getQueryAndParameters();
+    const all = await byId().paginate(qb);
+    expect(all.nodes.map((node) => node.id)).toEqual(expected);
+    expect(all.totalCount).toBe(expected.length);
+    expect(all.hasPrevPage).toBe(false);
+    expect(all.hasNextPage).toBe(false);
+    const limited = await byId().paginate(qb, { limit: 1050 });
+    expect(limited.nodes.map((node) => node.id)).toEqual(
+      expected.slice(0, 1050),
+    );
+    const last = await byId().paginate(qb, {
+      pageCursor: limited.nextPageCursor,
+    });
+    const backward = await byId().paginate(qb, {
+      pageCursor: last.prevPageCursor,
+    });
+    expect(backward.nodes.map((node) => node.id)).toEqual(
+      expected.slice(0, 1050),
+    );
+    expect(qb.getQueryAndParameters()).toEqual(original);
+  });
+
+  it.each(["whole alias", "direct columns"])(
+    "rejects selected composite-text-key relations using %s before querying",
+    async (selection) => {
+      await db.getRepository(CoreTextKey).save([
+        { scope: "a_b", key: "c", label: "first" },
+        { scope: "a", key: "b_c", label: "second" },
+      ]);
+      const qb = db.getRepository(CoreOwner).createQueryBuilder("owner");
+      if (selection === "whole alias") {
+        qb.leftJoinAndSelect("owner.textKeys", "item");
+      } else {
+        qb.leftJoin("owner.textKeys", "item").addSelect([
+          "item.scope",
+          "item.key",
+          "item.label",
+        ]);
+      }
+      const original = qb.getQueryAndParameters();
+      const paginator = new CursorPaginator(CoreOwner, {
+        orderBy: { id: "ASC" },
+      });
+      queries.length = 0;
+      await expect(paginator.paginate(qb, { limit: 2 })).rejects.toMatchObject({
+        name: "PaginationInputError",
+        code: "UNSUPPORTED_QUERY",
+      });
+      expect(queries).toHaveLength(0);
+      expect(qb.getQueryAndParameters()).toEqual(original);
+    },
+  );
+
+  it("allows composite-text-key relations used only as filters", async () => {
+    await db.getRepository(CoreTextKey).save([
+      { scope: "a_b", key: "c", label: "first" },
+      { scope: "a", key: "b_c", label: "second" },
+    ]);
+    const qb = db
+      .getRepository(CoreOwner)
+      .createQueryBuilder("owner")
+      .innerJoin("owner.textKeys", "item");
+    const paginator = new CursorPaginator(CoreOwner, {
+      orderBy: { id: "ASC" },
+    });
+    const page = await paginator.paginate(qb, { limit: 1 });
+    expect(page.nodes.map((node) => node.id)).toEqual([1]);
+    expect(page.totalCount).toBe(1);
+    expect(page.hasNextPage).toBe(false);
   });
 
   it("keeps hostile string boundaries as bound data in composed queries", async () => {
@@ -346,6 +621,71 @@ describe("v3 core regressions with SQLite", () => {
     await traverse(byId(), qb, [1, 2, 3, 4, 5, 6], 1);
   });
 
+  it("keeps mixed NULL ordering when hydrating joined roots in both directions", async () => {
+    const paginator = new CursorPaginator(CoreRecord, {
+      orderBy: { name: { direction: "ASC", nulls: "LAST" }, id: "DESC" },
+    });
+    const qb = query().leftJoinAndSelect("r.children", "children");
+    await traverse(paginator, qb, [6, 3, 2, 4, 5, 1]);
+    const all = await paginator.paginate(qb);
+    expect(all.nodes[5].children.map((child) => child.id).sort()).toEqual([
+      1, 2, 3,
+    ]);
+  });
+
+  it("bounds root-key and availability reads while preserving necessary joined fan-out", async () => {
+    const runner = db.createQueryRunner();
+    const execute = runner.query.bind(runner);
+    const returnedRows: number[] = [];
+    const hook = jest
+      .spyOn(runner, "query")
+      .mockImplementation(async (sql, parameters, structured?: true) => {
+        const result: unknown = structured
+          ? await execute(sql, parameters, true)
+          : await execute(sql, parameters);
+        if (/^SELECT\b/i.test(sql)) {
+          const rows = Array.isArray(result)
+            ? result
+            : result && typeof result === "object" && "records" in result
+              ? result.records
+              : undefined;
+          if (!Array.isArray(rows)) throw new Error("Expected SELECT rows");
+          returnedRows.push(rows.length);
+        }
+        return result;
+      });
+    try {
+      const qb = query()
+        .leftJoinAndSelect("r.children", "children")
+        .setQueryRunner(runner);
+      const first = await byId().paginate(qb, { limit: 1 });
+      expect(first.nodes[0].children).toHaveLength(3);
+      expect(queries).toHaveLength(3);
+      expect(returnedRows).toEqual([2, 3, 1]);
+      queries.length = 0;
+      returnedRows.length = 0;
+      const second = await byId().paginate(qb, {
+        limit: 1,
+        pageCursor: first.nextPageCursor,
+        noTotalCount: true,
+      });
+      expect(second.nodes.map((node) => node.id)).toEqual([2]);
+      expect(second.hasPrevPage).toBe(true);
+      expect(queries).toHaveLength(3);
+      expect(returnedRows).toEqual([2, 1, 1]);
+      expect(queries.every(({ sql }) => !/\bCOUNT\s*\(/i.test(sql))).toBe(true);
+      queries.length = 0;
+      await byId().paginateRaw(
+        query().leftJoinAndSelect("r.owner", "owner").setQueryRunner(runner),
+        { limit: 1, noTotalCount: true },
+      );
+      expect(queries).toHaveLength(1);
+    } finally {
+      hook.mockRestore();
+      await runner.release();
+    }
+  });
+
   it("obtains omitted boundary columns without exposing them in partial entity results", async () => {
     const paginator = new CursorPaginator(CoreRecord, {
       orderBy: { rank: "ASC", id: "DESC" },
@@ -359,6 +699,117 @@ describe("v3 core regressions with SQLite", () => {
     await traverse(paginator, qb, [4, 3, 6, 5, 2, 1]);
     expect(qb.expressionMap.selects).toEqual([{ selection: "r.id" }]);
   });
+
+  it("preserves root identity when a partial projection omits the primary key", async () => {
+    const qb = query().select("r.rank");
+    const original = qb.getQueryAndParameters();
+    const pages: unknown[] = [];
+    let cursor: string | null = null;
+    let visits = 0;
+    for (;;) {
+      const page = await byId().paginate(qb, { limit: 2, pageCursor: cursor });
+      pages.push(
+        ...page.nodes.map(
+          (node) => JSON.parse(JSON.stringify(node)) as unknown,
+        ),
+      );
+      if (!page.hasNextPage) break;
+      if (++visits > 3) throw new Error("Partial traversal did not end");
+      cursor = page.nextPageCursor;
+    }
+    expect(pages).toStrictEqual([
+      { rank: 2 },
+      { rank: 2 },
+      { rank: 1 },
+      { rank: 1 },
+      { rank: 2 },
+      { rank: 2 },
+    ]);
+    expect(qb.getQueryAndParameters()).toEqual(original);
+  });
+
+  it("retains roots whose selected nullable columns are all NULL", async () => {
+    const qb = query().select("r.name");
+    const first = await byId().paginate(qb, { limit: 2 });
+    expect(
+      first.nodes.map((node) => JSON.parse(JSON.stringify(node)) as unknown),
+    ).toStrictEqual([{ name: null }, { name: "a" }]);
+    const second = await byId().paginate(qb, {
+      limit: 2,
+      pageCursor: first.nextPageCursor,
+    });
+    expect(
+      second.nodes.map((node) => JSON.parse(JSON.stringify(node)) as unknown),
+    ).toStrictEqual([{ name: "a" }, { name: "b" }]);
+  });
+
+  it("does not expose hidden sort columns through whole-entity selections", async () => {
+    const paginator = new CursorPaginator(CoreRecord, {
+      orderBy: { hidden: "ASC", id: "ASC" },
+    });
+    const first = await paginator.paginate(query(), { limit: 2 });
+    const second = await paginator.paginate(query(), {
+      limit: 2,
+      pageCursor: first.nextPageCursor,
+    });
+    expect(second.nodes.map((node) => node.id)).toEqual([3, 4]);
+    expect(
+      first.nodes
+        .concat(second.nodes)
+        .every((node) => node.hidden === undefined),
+    ).toBe(true);
+    const raw = await paginator.paginateRaw(query(), { limit: 2 });
+    expect(raw.nodes.every((node) => !("r_hidden" in node))).toBe(true);
+    expect(
+      raw.nodes.every((node) =>
+        Object.keys(node).every((key) => !key.startsWith("__paginator_")),
+      ),
+    ).toBe(true);
+  });
+
+  it("allocates raw boundary aliases around caller-selected colliding names", async () => {
+    const qb = query()
+      .select("r.id", "__paginator_0")
+      .addSelect("r.rank", "__paginator_1");
+    const paginator = new CursorPaginator(CoreRecord, {
+      orderBy: { name: "ASC", id: "DESC" },
+    });
+    const first = await paginator.paginateRaw<{
+      __paginator_0: number;
+      __paginator_1: number;
+    }>(qb, { limit: 2 });
+    expect(first.nodes).toStrictEqual([
+      { __paginator_0: 6, __paginator_1: 2 },
+      { __paginator_0: 3, __paginator_1: 1 },
+    ]);
+    const second = await paginator.paginateRaw<{
+      __paginator_0: number;
+      __paginator_1: number;
+    }>(qb, { limit: 2, pageCursor: first.nextPageCursor });
+    expect(second.nodes).toStrictEqual([
+      { __paginator_0: 2, __paginator_1: 2 },
+      { __paginator_0: 4, __paginator_1: 1 },
+    ]);
+  });
+
+  it.each([
+    ["generated", () => query().select("r").addSelect("r.rank", "r_id")],
+    [
+      "explicit",
+      () => query().select("r.id", "same").addSelect("r.rank", "same"),
+    ],
+  ])(
+    "rejects duplicate %s raw output aliases before querying",
+    async (_name, build) => {
+      await expect(
+        byId().paginateRaw(build(), { limit: 2 }),
+      ).rejects.toMatchObject({
+        name: "PaginationInputError",
+        code: "UNSUPPORTED_QUERY",
+      });
+      expect(queries).toHaveLength(0);
+    },
+  );
 
   it("supports raw default and custom aliases with omitted boundary selections", async () => {
     const paginator = new CursorPaginator(CoreRecord, {
@@ -386,11 +837,17 @@ describe("v3 core regressions with SQLite", () => {
       cursor = last.nextPageCursor;
     } while (last.hasNextPage);
     expect(ids).toEqual([4, 3, 6, 5, 2, 1]);
-    const previous = await paginator.paginateRaw<{
-      record_key: number;
-      label: string | null;
-    }>(qb, { limit: 2, pageCursor: last.prevPageCursor });
-    expect(previous.nodes.map((node) => node.record_key)).toEqual([6, 5]);
+    const backwards = last.nodes.map((node) => node.record_key);
+    let backwardPages = 0;
+    while (last.hasPrevPage) {
+      if (++backwardPages > 6) throw new Error("Raw traversal did not end");
+      last = await paginator.paginateRaw<{
+        record_key: number;
+        label: string | null;
+      }>(qb, { limit: 2, pageCursor: last.prevPageCursor });
+      backwards.unshift(...last.nodes.map((node) => node.record_key));
+    }
+    expect(backwards).toEqual(ids);
     expect(qb.getQueryAndParameters()).toEqual(original);
     const defaults = await byId().paginateRaw<{ r_id: number }>(query(), {
       limit: 1,
@@ -533,6 +990,40 @@ describe("v3 core regressions with SQLite", () => {
       prevPageCursor: null,
       nextPageCursor: null,
     });
+  });
+
+  it("uses fresh existence probes when preceding rows disappear between reads", async () => {
+    const first = await byId().paginate(query(), { limit: 2 });
+    const runner = db.createQueryRunner();
+    const execute = runner.query.bind(runner);
+    let deleted = false;
+    const hook = jest
+      .spyOn(runner, "query")
+      .mockImplementation(async (sql, parameters, structured?: true) => {
+        const result: unknown = structured
+          ? await execute(sql, parameters, true)
+          : await execute(sql, parameters);
+        if (!deleted && /^SELECT\b.*ORDER BY.*LIMIT/is.test(sql)) {
+          deleted = true;
+          await db.getRepository(CoreChild).clear();
+          await db.getRepository(CoreRecord).delete([1, 2]);
+        }
+        return result;
+      });
+    try {
+      const page = await byId().paginate(query().setQueryRunner(runner), {
+        limit: 2,
+        pageCursor: first.nextPageCursor,
+        noTotalCount: true,
+      });
+      expect(deleted).toBe(true);
+      expect(page.nodes.map((node) => node.id)).toEqual([3, 4]);
+      expect(page.hasPrevPage).toBe(false);
+      expect(page.hasNextPage).toBe(true);
+    } finally {
+      hook.mockRestore();
+      await runner.release();
+    }
   });
 
   it("observes inserted rows between page reads without changing a stored boundary", async () => {

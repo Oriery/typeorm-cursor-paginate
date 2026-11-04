@@ -1,8 +1,9 @@
-import { ObjectLiteral, ObjectType, SelectQueryBuilder } from "typeorm";
+import type { ObjectLiteral, ObjectType, SelectQueryBuilder } from "typeorm";
+import { PaginationInputError } from "./errors";
 import {
   CursorPaginator,
-  CursorPaginatorPaginateParams,
-  CursorPaginatorParams,
+  type CursorPaginatorPaginateParams,
+  type CursorPaginatorParams,
 } from "./cursor-paginator";
 
 export type PaginateOptions<TEntity extends ObjectLiteral> =
@@ -12,9 +13,23 @@ export function paginate<TEntity extends ObjectLiteral>(
   entity: ObjectType<TEntity>,
   qb: SelectQueryBuilder<TEntity>,
   options: PaginateOptions<TEntity>,
-  isRaw = false,
 ) {
-  const paginator = new CursorPaginator<TEntity>(entity, options);
+  if (arguments.length > 3) {
+    throw new PaginationInputError(
+      "UNSUPPORTED_QUERY",
+      "Positional raw mode was removed; use paginateRaw",
+    );
+  }
+  return new CursorPaginator(entity, options).paginate(qb, options);
+}
 
-  return paginator.paginate(qb, options, isRaw);
+export function paginateRaw<
+  TRaw extends ObjectLiteral,
+  TEntity extends ObjectLiteral = ObjectLiteral,
+>(
+  entity: ObjectType<TEntity>,
+  qb: SelectQueryBuilder<TEntity>,
+  options: PaginateOptions<TEntity>,
+) {
+  return new CursorPaginator(entity, options).paginateRaw<TRaw>(qb, options);
 }
