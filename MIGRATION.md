@@ -1,8 +1,8 @@
 # Migration
 
-## v2 to unreleased v3
+## v2 to v3
 
-v3 intentionally changes cursor format, validation, ordering guarantees, and raw-result behavior. The core changes below are implemented in source. Package exports, CJS/ESM consumer fixtures, supported Node versions, deep-import policy, and publication are still part of [section B](todo.md#b-public-api-and-distribution); this guide does not claim those release checks are complete.
+v3 is a deliberate major release: it changes cursor format, validation, ordering guarantees, raw-result types, package entry points, and runtime support. Validate the local `3.0.0-rc.0` tarball before adopting it. Stable npm publication remains a separate stage.
 
 ### Restart existing pagination
 
@@ -48,13 +48,13 @@ const page = await paginator.paginateRaw<{ user_id: number }>(query, {
 });
 ```
 
-The standalone counterpart is `paginateRaw<TRaw, TEntity>(Entity, query, options)`. Raw mode returns driver values and SQL aliases. It paginates root records and supports only to-one relation joins; to-many raw joins are rejected. Entity mode continues to support to-many joins and preserves the selected roots' complete joined collections, subject to the [joined entity identity restrictions](docs/core-contract.md#supported-queries-and-ownership). Counts measure matching roots in both modes.
+The standalone counterpart is `paginateRaw<TRaw, TEntity>(Entity, query, options)`. Raw mode returns driver values and SQL aliases. Omitting `TRaw` yields `Record<string, unknown>` in both APIs; declare the actual projection or narrow each field before using it. It paginates root records and supports only to-one relation joins; to-many raw joins are rejected. Entity mode continues to support to-many joins and preserves the selected roots' complete joined collections, subject to the [joined entity identity restrictions](docs/core-contract.md#supported-queries-and-ownership). Counts measure matching roots in both modes.
 
 Partial direct-column projections can omit ordering fields and primary keys. The paginator obtains private boundary values and removes private hydration keys from results. Entity projections must select at least one root column and cannot rename it with a custom SQL alias; use raw mode for custom output names.
 
 ### Update cursor transformers and value assumptions
 
-Rename `transformer` to `cursorTransformer`. `CursorTransformer` no longer takes an entity type parameter. Change custom codecs to serialize the complete `CursorEnvelope`, return `unknown` from `parse`, and preserve database value representations. The old entity-shaped `Cursor<TEntity>` and `DirectionalCursor<TEntity>` types have been replaced by `CursorEnvelope`, `CursorValue`, and normalized order information.
+Rename `transformer` to `cursorTransformer`. Supplying the removed option now throws `INVALID_OPTION`, including from JavaScript; it never silently falls back to the default codec. Explicit null or missing/noncallable `parse`/`stringify` methods also fail. `CursorTransformer` no longer takes an entity type parameter. Change custom codecs to serialize the complete `CursorEnvelope`, return `unknown` from `parse`, and preserve database value representations. The old entity-shaped `Cursor<TEntity>` and `DirectionalCursor<TEntity>` types have been replaced by `CursorEnvelope`, `CursorValue`, and normalized order information.
 
 The paginator validates custom decoded input too. Do not convert bigint/numeric strings to numbers, timestamp strings to `Date`, or apply a TypeORM column transformer in the codec. The [JSON codec contract](docs/core-contract.md#custom-cursor-encoding) shows the required shape. The `v3:` prefix and 16,384-character total bound are managed by the paginator.
 
@@ -70,11 +70,33 @@ Default/literal-`false` calls keep `Paginated<TNode>` with boolean flags. Opted-
 
 Catch `PaginationInputError` and inspect its `code` for input failures. Do not match old generic error messages. External invalid input and unsupported query configuration fail before pagination SQL; unsupported stored boundary values are discovered when read.
 
-### Source entry names and release-stage changes
+### Update imports and runtimes
 
-The source entry exports named `paginate`, `paginateRaw`, `CursorPaginator`, `PaginationInputError`, `Base64Transformer`, and `JsonTransformer`, plus the intended option/result/cursor/error types as type-only exports. It retains `paginate` as the default source export. Named functions and the class are the documented primary API.
+Use named `paginate`, `paginateRaw`, and `CursorPaginator` from the package root. The remaining runtime exports are `PaginationInputError`, `Base64Transformer`, and `JsonTransformer`. The default export is retained as an alias of `paginate`:
 
-These source declarations do not resolve the separate v2 native-ESM packaging defects by themselves. A final release migration guide will also record verified runtime/module support, package entry points, and any deep-import removals after section B's build, pack, and consumer checks pass.
+```javascript
+// CommonJS: require returns a namespace, not a callable function.
+const { paginate, CursorPaginator } = require("typeorm-cursor-paginate");
+const legacyDefault = require("typeorm-cursor-paginate").default;
+```
+
+```javascript
+// Native ESM: default is the paginate function, not a module object.
+import paginateDefault, {
+  paginate,
+  CursorPaginator,
+} from "typeorm-cursor-paginate";
+```
+
+The ESM facade delegates to the same CommonJS implementation. Mixed imports preserve constructor identity, including `instanceof PaginationInputError`; there are no separate class copies. CommonJS declarations use `.d.ts` and native ESM declarations use `.d.mts`, re-exporting the same canonical types.
+
+Use `import type` for `Paginated`, `PaginateOptions`, `CursorPaginatorParams`, `CursorPaginatorPaginateParams`, `CursorTransformer`, `CursorEnvelope`, `CursorValue`, `Order`, `OrderBy`, `NormalizedOrder`, and `PaginationInputErrorCode`. These names have no runtime values. Old `Cursor<TEntity>` and `DirectionalCursor<TEntity>` types are removed. `Paginated` now describes the actual node type rather than implying raw rows are entities; its second optional type parameter describes nullable availability flags.
+
+Only the package root and `typeorm-cursor-paginate/package.json` are public entry points. Replace every `typeorm-cursor-paginate/lib/...` or `src/...` deep import with a root import. The exports map intentionally blocks deep imports, even where implementation files exist in the tarball. No source files, tests, or source maps are shipped.
+
+Supported runtimes are Node **22.13.0+ within 22.x**, **24.11.0+ within 24.x**, and **26.0.0+ within 26.x**. Node 20 and odd-numbered releases are outside this release's policy. TypeORM remains a peer dependency at `^0.3.21 || ^1.0.0`; install the database driver appropriate to your TypeORM version. In particular, TypeORM 0.3.21 uses better-sqlite3 8–11, while TypeORM 1.0.0 requires 12. Do not force an incompatible peer combination.
+
+TypeScript consumers use **5.7.3 or newer within 5.x/6.x**. Verified resolution modes are NodeNext, Node16, legacy `node`/`node10`, and bundler. NodeNext/Node16 choose the declaration matching the import or require branch. Bundler resolution is a type-resolution check for Node-targeted builds, not browser runtime support. The fixtures typecheck declarations with `skipLibCheck: false`; include the Node types and `ESNext.Disposable` library required by TypeORM 1's declarations.
 
 ## v1 to v2
 

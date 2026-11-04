@@ -1,27 +1,19 @@
 {
   "compilerOptions": {
-    "target": "esnext",
+    "target": "ES2022",
     "module": "node16",
     "moduleResolution": "node16",
-    "lib": [
-      "esnext"
-    ],
+    "lib": ["ES2022"],
     "outDir": "lib",
     "rootDir": "./src",
-    "emitDeclarationOnly": true,
+    "noEmit": true,
     "declaration": true,
     "pretty": true,
-    "sourceMap": true,
     "strict": true,
     "esModuleInterop": true,
     "noImplicitReturns": true,
     "experimentalDecorators": true,
-    "types": [
-      "node",
-      "jest"
-    ]
+    "types": ["node", "jest"]
   },
-  "include": [
-    "src/**/*"
-  ]
+  "include": ["src/**/*"]
 }

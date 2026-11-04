@@ -2,7 +2,7 @@
   "test": ".*.ts$",
   "env": {
     "targets": {
-      "node": "20.19"
+      "node": "22.13"
     }
   },
   "module": {
