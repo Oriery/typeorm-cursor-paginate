@@ -11,6 +11,7 @@ This major release replaces v2 cursor and query behavior. Read [MIGRATION.md](MI
 - Availability flags check both sides by default, including deleted boundaries. Nonempty pages retain both cursors. `noOppositePageCheck` explicitly skips the opposite probe and returns `null` for that unchecked flag; total counting remains independent.
 - CommonJS and native ESM entry points share one implementation and constructor identity. Conditional declarations support TypeScript NodeNext, Node16, legacy node and bundler resolution. Deep implementation imports are blocked.
 - Exported declarations from CommonJS consumers using TypeScript's default resolution can name public result types, including inferred bases from generic class factories. Metadata-backed mapped-one entity joins and exact composite joined keys with a single text/enum component are supported without weakening raw-row or ambiguous-identity restrictions.
+- Selected joined identities reject arrays, JSON and other unsupported storage families before SQL. Unsafe SQLite integer keys fail explicitly before returning hydrated results, preventing silent loss of related rows through driver rounding and ORM grouping.
 - Runtime support is Node 22.13+ within 22.x, 24.11+ within 24.x, and 26+ within 26.x, with TypeORM `^0.3.21 || ^1.0.0` and TypeScript consumers 5.7.3+ within 5.x/6.x. Node 22 has release-validation coverage but is not in ongoing CI.
 
 ### Timestamp correction

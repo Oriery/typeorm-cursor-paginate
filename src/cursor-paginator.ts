@@ -271,6 +271,33 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
       hydrate.addSelect(`${hydrate.alias}.${column.propertyPath}`);
     const hydrationAliases = this.addBoundaries(hydrate, orders, false);
     const hydrated = await hydrate.getRawAndEntities();
+    if (base.connection.options.type !== "postgres") {
+      const joinedKeys = base.expressionMap.joinAttributes.flatMap((join) =>
+        join.isSelected && join.metadata
+          ? join.metadata.primaryColumns.map((column) =>
+              DriverUtils.buildAlias(
+                base.connection.driver,
+                undefined,
+                join.alias.name,
+                column.databaseName,
+              ),
+            )
+          : [],
+      );
+      // SQLite can store 64-bit integers even in an ordinary INTEGER column. The
+      // driver may round them before TypeORM groups entities, silently merging keys.
+      for (const row of hydrated.raw as Record<string, unknown>[]) {
+        for (const key of joinedKeys) {
+          const value = row[key];
+          if (typeof value === "number" && !Number.isSafeInteger(value)) {
+            throw new PaginationInputError(
+              "UNSUPPORTED_VALUE",
+              "SQLite joined primary keys must remain safe integers after driver conversion",
+            );
+          }
+        }
+      }
+    }
     for (const entity of hydrated.entities) {
       for (const column of hiddenPrimary) {
         const path = column.propertyPath.split(".");
@@ -434,28 +461,17 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
         const textComponents = types.filter((type) =>
           textIdentityTypes.includes(type),
         );
-        const exactComposite =
-          textComponents.length <= 1 &&
-          types.every(
-            (type) =>
-              exactIdentityTypes.includes(type) ||
-              textIdentityTypes.includes(type),
-          );
         if (
-          types.some((type) =>
-            [
-              "timestamp",
-              "timestamp without time zone",
-              "timestamptz",
-              "timestamp with time zone",
-              "datetime",
-              "date",
-            ].includes(type),
+          primary.some((column) => column.isArray) ||
+          types.some(
+            (type) =>
+              !exactIdentityTypes.includes(type) &&
+              !textIdentityTypes.includes(type),
           ) ||
-          (primary.length > 1 && !exactComposite)
+          textComponents.length > 1
         ) {
           unsupported(
-            "Selected joined entities require exact, unambiguous primary keys; temporal and delimiter-sensitive composite keys are unsupported",
+            "Selected joined entities require scalar integer, boolean, UUID or text primary keys, with at most one text/enum component",
           );
         }
       }
