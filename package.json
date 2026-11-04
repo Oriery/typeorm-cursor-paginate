@@ -1,6 +1,6 @@
 {
   "name": "typeorm-cursor-paginate",
-  "version": "3.0.0-rc.0",
+  "version": "3.0.0",
   "description": "Cursor-based pagination with directional cursors.",
   "keywords": [
     "directional",
@@ -76,6 +76,7 @@
     "lib/**/*.d.mts",
     "README.md",
     "MIGRATION.md",
+    "CHANGELOG.md",
     "License",
     "docs/core-contract.md"
   ],

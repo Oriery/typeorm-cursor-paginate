@@ -2,20 +2,20 @@
 
 Cursor pagination for TypeORM queries, with directional cursors, mixed ordering, explicit NULL placement, and entity or raw results. A cursor carries its direction, so the same `pageCursor` option requests the next or previous page.
 
-**v3 release candidate: `3.0.0-rc.0`.** This deliberate major release replaces v2 behavior. Install the locally packed tarball for integration validation; stable npm publication is a separate stage. Installing the published v2 package does not provide these contracts.
+**v3.0.0 is prepared for release.** This deliberate major release replaces v2 behavior. Until publication, install the verified local tarball; the published v2 package does not provide these contracts. See the [release notes](CHANGELOG.md) for changes and publication verification.
 
 Read the [core contract](docs/core-contract.md) for supported queries, precise values, availability flags, and query costs. Existing consumers should start with the [migration guide](MIGRATION.md).
 
 ## Installation and imports
 
-Build a local release candidate from this checkout, then install it in a consumer:
+Build the release artifact from this checkout, then install it in a consumer:
 
 ```sh
 npm ci
 npm run check
 npm pack --pack-destination /tmp
 # In the consuming project:
-npm install /tmp/typeorm-cursor-paginate-3.0.0-rc.0.tgz
+npm install /tmp/typeorm-cursor-paginate-3.0.0.tgz
 ```
 
 Install TypeORM and a supported database driver in the consumer as well. Use the package root for every public import:
@@ -40,7 +40,7 @@ import {
 
 Named exports are the primary API. The default export remains an alias of `paginate`: `import paginate from "typeorm-cursor-paginate"` in native ESM, or `require("typeorm-cursor-paginate").default` in CommonJS. `require(...)` itself returns a namespace object. Both module formats share one implementation, so constructors and `instanceof PaginationInputError` retain identity across them.
 
-The only other public subpath is `typeorm-cursor-paginate/package.json`. Deep `lib/...` and `src/...` imports are unsupported and blocked. The tarball includes compiled JavaScript, declarations, license, README, migration guide and core contract, with no tests, source maps, or source files.
+The only other public subpath is `typeorm-cursor-paginate/package.json`. Deep `lib/...` and `src/...` imports are unsupported and blocked. The tarball includes compiled JavaScript, declarations, license, README, migration guide, release notes and core contract, with no tests, source maps, or source files.
 
 | Support surface          | Policy                                                                                                                                      |
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |

@@ -2,7 +2,7 @@
 
 ## v2 to v3
 
-v3 is a deliberate major release: it changes cursor format, validation, ordering guarantees, raw-result types, package entry points, and runtime support. Validate the local `3.0.0-rc.0` tarball before adopting it. Stable npm publication remains a separate stage.
+v3 is a deliberate major release: it changes cursor format, validation, ordering guarantees, raw-result types, package entry points, and runtime support. Validate the packed `3.0.0` artifact before adopting it. See the [release notes](CHANGELOG.md) for publication status and verification.
 
 ### Restart existing pagination
 

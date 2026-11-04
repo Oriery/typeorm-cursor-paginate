@@ -26,6 +26,7 @@ const publicDocuments = [
   "License",
   "README.md",
   "MIGRATION.md",
+  "CHANGELOG.md",
   "docs/core-contract.md",
   "package.json",
 ];
@@ -410,7 +411,7 @@ try {
     require("node:fs").mkdirSync(output, { recursive: true });
     const destination = join(output, basename(tarball));
     cpSync(tarball, destination);
-    console.log(`Verified release candidate: ${destination}`);
+    console.log(`Verified package artifact: ${destination}`);
   }
   success = true;
 } catch (error) {
