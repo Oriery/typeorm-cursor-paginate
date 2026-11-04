@@ -70,7 +70,39 @@ class PageEvent {
   @OneToMany(() => PageLabel, (label) => label.event)
   labels!: PageLabel[];
 
+  @OneToMany(() => PageArrayKey, (key) => key.event)
+  arrayKeys!: PageArrayKey[];
+
+  @OneToMany(() => PageJsonKey, (key) => key.event)
+  jsonKeys!: PageJsonKey[];
+
   displayOwner?: PageOwner | null;
+}
+
+@Entity("page_array_key")
+class PageArrayKey {
+  @PrimaryColumn({ type: "integer", array: true })
+  key!: number[];
+
+  @ManyToOne(() => PageEvent, (event) => event.arrayKeys)
+  @JoinColumn({ name: "eventId" })
+  event!: PageEvent;
+
+  @Column("integer")
+  eventId!: number;
+}
+
+@Entity("page_json_key")
+class PageJsonKey {
+  @PrimaryColumn("jsonb")
+  key!: { id: number };
+
+  @ManyToOne(() => PageEvent, (event) => event.jsonKeys)
+  @JoinColumn({ name: "eventId" })
+  event!: PageEvent;
+
+  @Column("integer")
+  eventId!: number;
 }
 
 @Entity("page_label")
@@ -129,7 +161,14 @@ postgres("PostgreSQL core correctness (isolated database)", () => {
     db = await new DataSource({
       type: "postgres",
       url: url.toString(),
-      entities: [PageEvent, PageOwner, PageNote, PageLabel],
+      entities: [
+        PageEvent,
+        PageOwner,
+        PageNote,
+        PageLabel,
+        PageArrayKey,
+        PageJsonKey,
+      ],
       synchronize: true,
       extra: { options: "-c timezone=Europe/Berlin" },
       logging: ["query"],
@@ -344,6 +383,34 @@ postgres("PostgreSQL core correctness (isolated database)", () => {
       expect(
         nodes.slice(0, -1).every((node) => node.displayOwner?.id === 1),
       ).toBe(true);
+    },
+  );
+
+  it.each([
+    [
+      "arrayKeys",
+      "INSERT INTO page_array_key VALUES ('[0:1]={1,2}'::integer[], 1), ('{1,2}'::integer[], 1)",
+    ],
+    [
+      "jsonKeys",
+      `INSERT INTO page_json_key VALUES ('{"id":9007199254740992}'::jsonb, 1), ('{"id":9007199254740993}'::jsonb, 1)`,
+    ],
+  ])(
+    "rejects lossy selected joined %s identities before SQL",
+    async (relation, insert) => {
+      await db.query(insert);
+      const qb = db
+        .getRepository(PageEvent)
+        .createQueryBuilder("e")
+        .leftJoinAndSelect(`e.${relation}`, "child");
+      const paginator = new CursorPaginator(PageEvent, {
+        orderBy: { id: "ASC" },
+      });
+      statements.length = 0;
+      await expect(paginator.paginate(qb, { limit: 1 })).rejects.toMatchObject({
+        code: "UNSUPPORTED_QUERY",
+      });
+      expect(statements).toHaveLength(0);
     },
   );
 
