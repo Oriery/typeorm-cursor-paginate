@@ -8,8 +8,8 @@ import {
 
 import { CursorPaginator } from "./cursor-paginator";
 import { JsonTransformer } from "./transformers/json-transformer";
-import { paginate } from "./paginate";
-import type { OrderBy } from "./interfaces/paginator";
+import { paginate, paginateRaw } from "./paginate";
+import type { CursorTransformer, OrderBy } from "./interfaces/paginator";
 
 @Entity()
 class ValidationRecord {
@@ -243,6 +243,65 @@ describe("v3 input validation before SQL", () => {
         ),
       "UNSUPPORTED_QUERY",
     );
+  });
+
+  it("rejects the renamed transformer option instead of silently changing codecs", async () => {
+    const options = {
+      orderBy: { id: "ASC" as const },
+      transformer: new JsonTransformer(),
+    };
+    await inputError(
+      () => new CursorPaginator(ValidationRecord, options),
+      "INVALID_OPTION",
+    );
+    await inputError(
+      () => paginate(ValidationRecord, query(), options),
+      "INVALID_OPTION",
+    );
+    await inputError(
+      () => paginateRaw(ValidationRecord, query(), options),
+      "INVALID_OPTION",
+    );
+  });
+
+  it.each([
+    null,
+    true,
+    {},
+    { parse: JSON.parse },
+    { stringify: JSON.stringify },
+    { parse: true, stringify: JSON.stringify },
+    { parse: JSON.parse, stringify: true },
+  ])("rejects an invalid cursorTransformer %p before SQL", async (codec) => {
+    await inputError(
+      () =>
+        new CursorPaginator(ValidationRecord, {
+          orderBy: { id: "ASC" },
+          cursorTransformer: codec as unknown as CursorTransformer,
+        }),
+      "INVALID_OPTION",
+    );
+  });
+
+  it("keeps undeclared raw field types unknown in both public APIs", async () => {
+    const rawQuery = query().select("record.id", "public_id");
+    const instance = await paginator().paginateRaw(rawQuery, { limit: 1 });
+    const standalone = await paginateRaw(ValidationRecord, rawQuery, {
+      orderBy: { id: "ASC" },
+      limit: 1,
+    });
+    const unchecked = await paginateRaw(ValidationRecord, rawQuery, {
+      orderBy: { id: "ASC" },
+      noOppositePageCheck: true,
+      limit: 1,
+    });
+    const requireNumber = (value: number) => value;
+    // @ts-expect-error Raw driver values need an explicit output type or narrowing.
+    expect(requireNumber(instance.nodes[0].public_id)).toBe(1);
+    // @ts-expect-error Standalone raw defaults must not fall back to ObjectLiteral/any.
+    expect(requireNumber(standalone.nodes[0].public_id)).toBe(1);
+    // @ts-expect-error Nullable availability must not weaken the raw field types.
+    expect(requireNumber(unchecked.nodes[0].public_id)).toBe(1);
   });
 
   it("rejects the removed positional raw argument before SQL", async () => {

@@ -35,7 +35,7 @@ export function paginate<TEntity extends ObjectLiteral>(
 }
 
 export function paginateRaw<
-  TRaw extends ObjectLiteral,
+  TRaw extends ObjectLiteral = Record<string, unknown>,
   TEntity extends ObjectLiteral = ObjectLiteral,
 >(
   entity: ObjectType<TEntity>,
@@ -43,7 +43,7 @@ export function paginateRaw<
   options: PaginateOptions<TEntity> & { noOppositePageCheck?: false },
 ): Promise<Paginated<TRaw>>;
 export function paginateRaw<
-  TRaw extends ObjectLiteral,
+  TRaw extends ObjectLiteral = Record<string, unknown>,
   TEntity extends ObjectLiteral = ObjectLiteral,
 >(
   entity: ObjectType<TEntity>,
@@ -51,7 +51,7 @@ export function paginateRaw<
   options: PaginateOptions<TEntity>,
 ): Promise<Paginated<TRaw, boolean | null>>;
 export function paginateRaw<
-  TRaw extends ObjectLiteral,
+  TRaw extends ObjectLiteral = Record<string, unknown>,
   TEntity extends ObjectLiteral = ObjectLiteral,
 >(
   entity: ObjectType<TEntity>,

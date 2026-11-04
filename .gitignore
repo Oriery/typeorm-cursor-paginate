@@ -1,5 +1,7 @@
 /node_modules
 /lib
+/artifacts
+*.tgz
 
 # testing
 /dist 

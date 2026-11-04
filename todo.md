@@ -223,7 +223,9 @@ Unresolved boundaries belong to B or are explicit supported-behavior limits:
 - Node 24 with the old SQLite 11 native driver crashed during Jest VM cleanup;
   the valid minimum-dependency check uses Node 22. TypeORM 0.3.21 does not declare
   compatibility with SQLite driver 12. CI records the tested pairs without
-  forcing an invalid peer combination. B must finalize the wider runtime policy.
+  forcing an invalid peer combination. B later verified the updated toolchain on
+  exact Node 24.11.0 with TypeORM 0.3.21 and SQLite 11.10.0: all 215 SQLite/input
+  tests and packed consumers passed without the prior cleanup crash.
 - The separate `sqlite3` adapter is accepted by the core but has not been exercised
   independently; SQLite evidence here comes from `better-sqlite3`.
 - The core contract explicitly rejects unsupported query/value/storage shapes;
@@ -231,8 +233,7 @@ Unresolved boundaries belong to B or are explicit supported-behavior limits:
 
 ## B. Public API and distribution
 
-A supplies the source API and behavioral documentation checked below. Package-consumer
-verification, the final support policy, and publication remain separate B acceptance work.
+A supplies the behavioral contracts. B prepares the locally installable release candidate; stable npm publication remains a separate stage.
 
 ### B1. Finalize the v3 API
 
@@ -241,57 +242,86 @@ Sources: [package entry](src/index.ts), [standalone paginate](src/paginate.ts) a
 - [x] Rename `CursorPaginatorParams.transformer` to `cursorTransformer` and document the breaking change.
 - [x] Export all intended public option/result/error types, including the standalone function's options, using explicit type-only exports where appropriate.
       Do not expose interfaces as undefined runtime exports.
-- [ ] Recommendation: document named `paginate` and `CursorPaginator` exports as the primary API.
+- [x] Recommendation: document named `paginate` and `CursorPaginator` exports as the primary API.
       Decide deliberately whether a default export remains, and test its real runtime meaning if retained.
 - [x] Finalize raw-mode overloads or a separate raw API with the output and boundary types from A5.
+      Both raw APIs default to `Record<string, unknown>`; removed/malformed codec options fail explicitly.
 - [x] Remove the redundant entity argument or validate it against query metadata.
       The entity argument is retained and validated against root query metadata.
 - [x] Publish the validated cursor-transformer, supported-query and error contracts from A.
 
+B prerequisite revalidation on 2026-11-04 passed 215 SQLite/input tests and all 44 PostgreSQL tests, plus typecheck and lint. Regression-first API checks closed the standalone raw `any` inference gap and rejected the removed `transformer` option instead of silently dropping custom codec behavior. No blocking A prerequisite remains.
+
 ### B2. Build and package entry points
 
-Sources: [package.json](package.json), [production TypeScript configuration](tsconfig.build.json), [SWC build configuration](build.swcrc) and [.npmignore](.npmignore).
+Sources: [package.json](package.json), [production TypeScript configuration](tsconfig.build.json), [build script](scripts/build.cjs), and [ESM facade](scripts/esm/index.mjs).
 
-- [ ] Build production output through an explicit production TypeScript configuration that excludes tests.
-- [ ] Replace SWC's production CJS export emission with `tsc` or another verified approach.
-      The existing dynamic export helper prevents native ESM named-import detection.
-- [ ] Provide a native ESM entry point and an explicit `exports` map with appropriate declarations for supported consumers.
+- [x] Build production output through an explicit production TypeScript configuration that excludes tests.
+- [x] Replace SWC's production CJS export emission with `tsc` or another verified approach.
+      The production build uses `tsc`; SWC remains only in Jest.
+- [x] Provide a native ESM entry point and an explicit `exports` map with appropriate declarations for supported consumers.
       Fixing CJS named-export detection alone does not make its default import equal the default-exported function.
-- [ ] Consider a single canonical CJS implementation with a small ESM facade instead of two independent implementations.
+- [x] Consider a single canonical CJS implementation with a small ESM facade instead of two independent implementations.
       Validate shared constructor identity and correct type resolution if choosing this approach.
-- [ ] Decide which deep imports are supported; document intentionally removed `lib/...` access as a v3 migration change.
-- [ ] Replace broad packaging rules with an intentional file allowlist or equally explicit policy.
+- [x] Decide which deep imports are supported; document intentionally removed `lib/...` access as a v3 migration change.
+- [x] Replace broad packaging rules with an intentional file allowlist or equally explicit policy.
       Exclude test sources/declarations and inspect the tarball; retain license, README and any intentionally shipped sources/maps.
-- [ ] Verify that clean builds and packed artifacts are reproducible and contain matching JavaScript and declarations.
+- [x] Verify that clean builds and packed artifacts are reproducible and contain matching JavaScript and declarations.
 
 ### B3. Support policy, CI and maintenance
 
 Sources: [CI workflow](.github/workflows/ci.yml), [lint configuration](eslint.config.mjs) and [dependency update PR #16](https://github.com/Oriery/typeorm-cursor-paginate/pull/16).
 
-- [ ] Add `engines` and align the compilation target, documentation and runtime test matrix.
+- [x] Add `engines` and align the compilation target, documentation and runtime test matrix.
       Choose runtime support separately from development-tool requirements, accounting for the supported TypeORM versions' own engine constraints.
-- [ ] Test the exact minimum supported Node/TypeORM combinations as well as current supported branches.
+- [x] Test the exact minimum supported Node/TypeORM combinations as well as current supported branches.
       Floating `typeorm@0.3` and `typeorm@1` do not verify the advertised lower bounds `0.3.21` and `1.0.0`.
-- [ ] Add explicit typechecking and production-build checks to CI.
-- [ ] Pack the package and install the tarball into clean CommonJS, native ESM and TypeScript consumer fixtures.
+- [x] Add explicit typechecking and production-build checks to CI.
+- [x] Pack the package and install the tarball into clean CommonJS, native ESM and TypeScript consumer fixtures.
       Test the public entry points rather than relying only on source imports transformed by Jest.
-- [ ] Include TypeScript NodeNext and other deliberately supported module-resolution modes in consumer checks.
-- [ ] Run PostgreSQL regressions in CI alongside SQLite and validate package contents automatically.
-      A adds targeted real-database jobs for the verified dependency pairs; automatic package-content validation remains.
-- [ ] Resolve meaningful lint warnings and align ESLint/Prettier with the chosen source/module setup.
+- [x] Include TypeScript NodeNext and other deliberately supported module-resolution modes in consumer checks.
+- [x] Run PostgreSQL regressions in CI alongside SQLite and validate package contents automatically.
+      Targeted compatibility jobs run both databases and packed consumer/file validation.
+- [x] Resolve meaningful lint warnings and align ESLint/Prettier with the chosen source/module setup.
       The tools are already configured; replace the old vague setup task with concrete fixes.
-- [ ] Review and rebase or supersede the existing dependency update against the v3 toolchain, without blindly repeating the dependency compatibility work completed in 2.2.0.
-- [ ] Keep CI scopes and timeouts sufficient for the new checks, and avoid an unnecessarily large Cartesian product when targeted compatibility jobs provide the required evidence.
+- [x] Review and rebase or supersede the existing dependency update against the v3 toolchain, without blindly repeating the dependency compatibility work completed in 2.2.0.
+- [x] Keep CI scopes and timeouts sufficient for the new checks, and avoid an unnecessarily large Cartesian product when targeted compatibility jobs provide the required evidence.
 
 ### B4. Documentation and migration
 
-- [ ] Add a tested `CursorTransformer` example using the final option name and validation contract.
+- [x] Add a tested `CursorTransformer` example using the final option name and validation contract.
 - [x] Document `noTotalCount`, its default, result shape and query-cost tradeoffs.
 - [x] Document unique ordering, NULL handling, supported values/precision, query ownership, raw mode, flags, errors and consistency limits.
 - [x] Correct the README example whose equal-name IDs are shown ascending despite descending ID ordering.
-- [ ] Execute or otherwise verify the documented import and pagination examples against built artifacts.
-- [ ] Add a v2-to-v3 migration guide covering exports, options, types, supported runtimes, deep imports and old cursor invalidation/restart.
-      The core migration guide exists; finalize runtime/module/deep-import sections after distribution checks.
+- [x] Execute or otherwise verify the documented import and pagination examples against built artifacts.
+- [x] Add a v2-to-v3 migration guide covering exports, options, types, supported runtimes, deep imports and old cursor invalidation/restart.
+      The migration guide includes verified runtime/module/deep-import policies and restart behavior.
 - [x] Keep the README linked to this backlog instead of duplicating task lists.
 
 Acceptance for B: a packed v3 release candidate installs and works in all documented consumer forms; its types, runtime exports, examples and published file list agree.
+
+### B completion and validation — 2026-11-04
+
+The release candidate is `3.0.0-rc.0`. Named exports are primary; the default remains the `paginate` function (CommonJS `.default`). Entity arguments remain validated against root metadata. Both raw APIs default to unknown fields, and legacy/malformed codec options fail explicitly.
+
+One ES2022 CommonJS implementation plus a small native ESM facade is the chosen distribution. Branch-specific `.d.ts`/`.d.mts` entry declarations share class identity. Only the package root and `package.json` are public; deep imports are blocked. The explicit file allowlist contains production JavaScript/declarations, license, README, migration guide and core contract, with no tests, source files or maps. Independent builds produce identical packed bytes.
+
+The support policy is Node 22.13.0+ within 22.x, 24.11.0+ within 24.x, and 26.0.0+ within 26.x; TypeORM `^0.3.21 || ^1.0.0`; TypeScript consumers 5.7.3+ within 5.x/6.x. Development uses the locked TypeScript 6 toolchain, separately from runtime compatibility. NodeNext, Node16, legacy node/node10, and bundler resolution are checked with full declaration checking. Browser execution is outside the policy.
+
+Local exact-minimum checks have passed:
+
+| Node    | TypeORM | better-sqlite3 | TypeScript consumer | Evidence                                                                               |
+| ------- | ------- | -------------- | ------------------- | -------------------------------------------------------------------------------------- |
+| 22.13.0 | 0.3.21  | 11.10.0        | 5.7.3               | 215 SQLite/input + 44 PostgreSQL tests, typecheck/build, packed consumers              |
+| 22.13.0 | 1.0.0   | 12.11.1        | 5.7.3               | Same full checks                                                                       |
+| 24.11.0 | 1.0.0   | 12.11.1        | 6.0.3               | Packed runtime/type consumers and README examples                                      |
+| 26.0.0  | 1.0.0   | 12.11.1        | 6.0.3               | Packed runtime/type consumers and README examples                                      |
+| 24.21.0 | 1.1.2   | 12.11.1        | 6.0.3               | 215 SQLite/input + 44 PostgreSQL tests, lint/format/typecheck, build, packed consumers |
+
+The six-job CI uses one locked quality job and five targeted compatibility pairs on Node 24/26, including exact TypeORM and TypeScript floors; it runs PostgreSQL alongside SQLite, checks production builds and actual installed tarballs, and uploads the RC artifact. Strengthened installed-documentation checks pass locally: every README TypeScript block is extracted from the installed tarball and executed, the compiler resolver asserts each conditional declaration target, installs enforce engines/peers, and installed files match freshly packed checkout bytes. The original [implementation CI run](https://github.com/Oriery/typeorm-cursor-paginate/actions/runs/41823212100) passed its seven jobs. At the maintainer’s request, ongoing CI excludes Node 22; its existing release-validation evidence and declared runtime support remain. Minimum TypeORM/TypeScript checks now run on Node 24.11.0. The moved TypeORM 0.3.21 / SQLite 11.10.0 pair passed all 215 SQLite/input tests and packed consumer modes locally on that exact runtime; no source regression checks were skipped.
+
+Dependency PR #16 was already closed and is superseded by this toolchain. Compatible dependency lines were refreshed; unused SWC CLI, rimraf, and eslint-plugin-prettier were removed. Better-sqlite3 13 and TypeScript 7 remain outside TypeORM/typescript-eslint compatibility. Exact minimatch 11.0.4 and glob 14.0.3 overrides fix development-tool advisories and must be removed once upstream ranges accept patched versions. `npm audit --omit=dev` is clean; the complete audit has five low-severity propagated findings from the single unpatched deepmerge advisory in Jest configuration merging, tracked in [issue #20](https://github.com/Oriery/typeorm-cursor-paginate/issues/20). Repository-controlled configuration is the current input; the dependency is not shipped.
+
+ESLint now covers source and build/test scripts with zero warnings allowed, current syntax, and strict unsafe/promise checks. Prettier checks repository code, configuration and documentation separately; `npm run format` applies the same policy. No stable npm publication or release tag is part of B.
+
+Final clean validation used `npm ci` followed by `npm run check`: lint with zero warnings, repository formatting, typecheck, all 215 SQLite/input and 44 PostgreSQL tests, production builds, and installed CJS/ESM/TypeScript consumers passed. Independent packaging and consumer review found no remaining release blockers. The 25-file locally installable artifact is `artifacts/typeorm-cursor-paginate-3.0.0-rc.0.tgz` (generated and ignored), SHA-256 `64f904df168e10ee2da8f925db6c4b6c6eb9f41d1f31b878f00513870df41b70`. Two clean packs matched byte for byte. The implementation passed all four exact-minimum consumer combinations above; the artifact refreshed with the current CI policy passed the moved Node 24.11.0 / TypeORM 0.3.21 / TypeScript 5.7.3 consumer checks. Section B is complete; integration validation and stable publication are the next stage.

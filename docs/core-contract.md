@@ -1,6 +1,6 @@
 # v3 core contract
 
-This document describes the unreleased v3 implementation. It defines the behavioral boundary for the public API and distribution work in [the work plan](../todo.md). It does not establish a published package, supported Node-version matrix, or verified CJS/ESM installation.
+This document describes the v3 release candidate. The [README](../README.md) defines the supported runtimes and package entry points; [the work plan](https://github.com/Oriery/typeorm-cursor-paginate/blob/main/todo.md) records acceptance evidence. Stable npm publication is a separate release stage.
 
 ## Supported queries and ownership
 
@@ -127,7 +127,7 @@ Entity mode first selects distinct root ordering tuples, bounded by `limit + 1` 
 
 Partial entity selections must include at least one root column. Required sort fields and primary keys may be omitted. Private selections supply cursor and hydration identity values, then omitted keys are removed, including empty embedded containers introduced only for private keys. Public omitted fields stay absent. TypeORM's entity return type does not make omitted properties present at runtime.
 
-Raw mode returns the caller's SQL projection with its aliases and driver values, not a hydrated `TEntity`. Use `paginateRaw<TRaw>` or standalone `paginateRaw<TRaw, TEntity>` to state that projection; omitting the method's output type yields `Record<string, unknown>`. Raw mode limits SQL rows directly because its supported to-one joins preserve one row per root. To-many raw joins are rejected instead of returning an arbitrary child row or claiming root limits over a multiplying result.
+Raw mode returns the caller's SQL projection with its aliases and driver values, not a hydrated `TEntity`. Use `paginateRaw<TRaw>` or standalone `paginateRaw<TRaw, TEntity>` to state that projection; omitting either API's output type yields `Record<string, unknown>`. Raw mode limits SQL rows directly because its supported to-one joins preserve one row per root. To-many raw joins are rejected instead of returning an arbitrary child row or claiming root limits over a multiplying result.
 
 For both modes, `totalCount` is the number of matching root records before applying the cursor, independent of direction and page limit. Joined multiplicity does not increase it. Composite root identities are counted as distinct SQL tuples, not concatenated strings. `noTotalCount` defaults to `false`; setting it to `true` yields `null` and suppresses the count read only.
 
@@ -190,7 +190,7 @@ The public `PaginationInputError` has a stable `name` and `code`; message wordin
 
 | Code                         | Meaning                                                                                                                                         |
 | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `INVALID_OPTION`             | `noOppositePageCheck` is neither a boolean nor omitted; strings, numbers, and null are rejected before SQL.                                     |
+| `INVALID_OPTION`             | The removed `transformer` option, a malformed `cursorTransformer`, or a `noOppositePageCheck` value other than boolean/undefined was supplied.  |
 | `INVALID_LIMIT`              | Limit is not an omitted value or a positive finite safe integer.                                                                                |
 | `INVALID_ORDER`              | Empty, duplicate, unknown, or invalid ordering; required primary-key components are missing.                                                    |
 | `INVALID_CURSOR`             | Encoding, envelope, direction, ordering compatibility, or external boundary-value validation failed; also codec parsing/serialization failures. |
@@ -206,4 +206,4 @@ The suites use actual SQLite and PostgreSQL databases. Coverage includes complet
 
 In the PostgreSQL fixture with 10,007 matching roots and page limit 2, the root-key query returned 3 tuples, hydration of the 2 retained roots returned 4 joined rows, and the opposite availability probe returned 1 row using an index plan. This verifies the measured query behavior, not a constant bound on scanned rows or joined collections. The tests also measure actual read counts: `noTotalCount` removes COUNT SQL independently of availability, and `noOppositePageCheck: true` removes exactly one opposite probe on cursor requests while retaining requested-direction flags, projections, and cursors. SQLite and PostgreSQL tests cover the default and opted-out modes in both directions, including empty pages; compile-time assertions preserve default boolean flags and honest nullable/raw output types.
 
-Run the commands in the [README](../README.md#development-and-validation). PostgreSQL requires `npm run test:postgres` or an explicitly configured test URL; the SQLite-only test run is not evidence for timestamp correctness. Validation results and remaining distribution work are recorded in [the backlog](../todo.md).
+Run the commands in the [README](../README.md#development-and-validation). PostgreSQL requires `npm run test:postgres` or an explicitly configured test URL; the SQLite-only test run is not evidence for timestamp correctness. Validation results and release follow-ups are recorded in [the backlog](https://github.com/Oriery/typeorm-cursor-paginate/blob/main/todo.md).
