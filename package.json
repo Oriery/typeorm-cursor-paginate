@@ -65,7 +65,8 @@
       "require": {
         "types": "./lib/index.d.ts",
         "default": "./lib/index.js"
-      }
+      },
+      "types": "./lib/index.d.ts"
     },
     "./package.json": "./package.json"
   },

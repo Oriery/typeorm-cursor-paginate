@@ -386,9 +386,22 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
     if (map.aliases.filter((item) => item.type === "from").length !== 1)
       unsupported("Additional FROM sources are not supported");
     for (const join of map.joinAttributes) {
-      if (!join.relation || join.mapToProperty)
-        unsupported("Only mapped relation joins are supported");
-      if (raw && (join.relation!.isOneToMany || join.relation!.isManyToMany))
+      const mappedOne =
+        !!join.mapToProperty &&
+        join.isMappingMany === false &&
+        !!join.metadata &&
+        map.aliases.some(
+          (source) =>
+            source.name === join.mapToPropertyParentAlias && source.hasMetadata,
+        );
+      if ((!join.relation && !mappedOne) || (join.mapToProperty && !mappedOne))
+        unsupported(
+          "Only relation joins and metadata-backed mapped-one joins are supported",
+        );
+      if (
+        raw &&
+        (mappedOne || join.relation!.isOneToMany || join.relation!.isManyToMany)
+      )
         unsupported("Raw pages support only to-one relation joins");
       if (!raw && join.isSelected && join.metadata) {
         const primary = join.metadata.primaryColumns;
@@ -407,6 +420,27 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
           "boolean",
           "bool",
         ];
+        const textIdentityTypes = [
+          "text",
+          "varchar",
+          "character varying",
+          "char",
+          "character",
+          "enum",
+          "simple-enum",
+        ];
+        // With one text component, delimiter-free components on each side still
+        // identify its boundaries. Two text components could redistribute underscores.
+        const textComponents = types.filter((type) =>
+          textIdentityTypes.includes(type),
+        );
+        const exactComposite =
+          textComponents.length <= 1 &&
+          types.every(
+            (type) =>
+              exactIdentityTypes.includes(type) ||
+              textIdentityTypes.includes(type),
+          );
         if (
           types.some((type) =>
             [
@@ -418,8 +452,7 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
               "date",
             ].includes(type),
           ) ||
-          (primary.length > 1 &&
-            types.some((type) => !exactIdentityTypes.includes(type)))
+          (primary.length > 1 && !exactComposite)
         ) {
           unsupported(
             "Selected joined entities require exact, unambiguous primary keys; temporal and delimiter-sensitive composite keys are unsupported",
