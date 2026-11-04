@@ -86,10 +86,12 @@ Publish only the verified artifact with an authorized npm account:
 ```sh
 PACKAGE_OUTPUT_DIR=artifacts npm run test:package
 npm whoami
-npm publish artifacts/typeorm-cursor-paginate-3.0.0.tgz --access public --tag latest
+npm publish ./artifacts/typeorm-cursor-paginate-3.0.0.tgz --access public --tag latest
 ```
 
-After publication, download the registry artifact to a fresh directory and run the same installed-consumer checks against it:
+npm scans newly published packages before making them installable. A successful publish can report that processing is still pending; wait until `npm view typeorm-cursor-paginate@3.0.0 version --prefer-online` returns the version before running the registry checks. See [npm's publish-time scanning policy](https://github.blog/changelog/2026-07-28-npm-publish-time-malware-scanning-and-dual-use-metadata/).
+
+Once the version is available, download the registry artifact to a fresh directory and run the same installed-consumer checks against it:
 
 ```sh
 mkdir -p /tmp/paginator-registry-v3
