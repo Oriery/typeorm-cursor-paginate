@@ -30,7 +30,7 @@ jobs:
       - run: npm run test:package
         env:
           PACKAGE_OUTPUT_DIR: artifacts
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         with:
           name: v3-release-candidate
           path: artifacts/*.tgz
