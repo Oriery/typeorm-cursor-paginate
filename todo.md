@@ -138,7 +138,7 @@ Sources: [page flags](src/cursor-paginator.ts), [public result contract](src/int
 - [x] Replace the skipped opposite-direction deletion test with an active test for the chosen contract.
       Add backward paging, deletion of all earlier/later rows, and mutation between reads.
 - [x] Keep `noTotalCount` independent of page availability, and verify that it suppresses the count query.
-- [ ] Add `checkOppositePage: false` as an explicit opt-out from opposite-direction probes, keeping checked boolean flags by default and nullable types only for opted-out or dynamic calls.
+- [x] Add `checkOppositePage: false` as an explicit opt-out from opposite-direction probes, keeping checked boolean flags by default and nullable types only for opted-out or dynamic calls.
       Preserve known cursorless flags, requested-direction lookahead, both boundary cursors, and independence from total counting; verify the saved query in SQLite and PostgreSQL.
 - [x] Measure query counts and joined-row fan-out for the final algorithms; document the supported consistency guarantees and cost of exact flags.
 
@@ -167,8 +167,9 @@ Decisions applied throughout A:
   concatenation collisions. Entity hydration batches large pages and isolates
   colliding composite root identities; unsupported joined identity shapes fail
   before SQL rather than silently losing related entities.
-- Availability uses lookahead plus an opposite-direction bounded-output probe,
-  independently of totals. Empty pages have null cursors and use the supplied
+- Availability defaults to lookahead plus an opposite-direction bounded-output probe,
+  independently of totals. `checkOppositePage: false` saves the opposite probe on
+  cursor requests and returns `null` only for the unchecked direction. Empty pages have null cursors and use the supplied
   boundary for an inclusive opposite probe. Separate reads do not promise a
   snapshot during concurrent changes.
 
@@ -178,7 +179,7 @@ run against an isolated PostgreSQL 18 database (all failing). Independent review
 expanded coverage to 65 core SQLite tests, 96 input tests, 20 active original-suite
 tests, and 40 PostgreSQL tests. The former skipped deletion case is active.
 
-Final local acceptance results:
+Initial local acceptance results (before the optional opposite-page checks):
 
 | Runtime / TypeORM             | SQLite fixture                        | PostgreSQL fixture | Result                                                                             |
 | ----------------------------- | ------------------------------------- | ------------------ | ---------------------------------------------------------------------------------- |
@@ -192,6 +193,18 @@ The PostgreSQL harness owns a disposable Docker service unless an administrative
 The normal unit command skips the 40 PostgreSQL cases without that URL, and the
 separate PostgreSQL command ran all of them for both combinations above.
 Normal lockfile dependencies were restored with `npm ci` and reverified.
+
+The optional opposite-page checks have a separate regression-first commit,
+`edb8696`: 21 of 25 new SQLite cases and all 4 new PostgreSQL cases failed before
+implementation. The complete updated suite passes locally on the normal Node 24 /
+TypeORM 1.1.1 dependencies: **206 SQLite/input tests and 44 actual PostgreSQL tests**,
+plus lint, typecheck, and build. Tests assert exactly one saved probe, first/empty
+page semantics, independent totals, immutable queries/cursors, and boolean-default
+versus nullable opt-out/dynamic result types for instance and standalone APIs.
+The overloads expose TypeScript's TS7022 inference cycle in some cursor-reassignment
+loops; an explicit page-result annotation resolves it without widening default
+flags. The contract and migration guide document this tradeoff.
+
 The [implementation CI run](https://github.com/Oriery/typeorm-cursor-paginate/actions/runs/41814281266)
 passed all eight jobs: six existing Node 22/24/26 × TypeORM 0.3/1 jobs and two
 targeted PostgreSQL jobs for the exact dependency pairs above.
@@ -199,7 +212,7 @@ targeted PostgreSQL jobs for the exact dependency pairs above.
 Measured on 10,007 PostgreSQL roots: with limit 2, the key query returned 3 roots,
 hydration returned 4 joined rows for the 2 retained roots, and the opposite probe
 used an index and returned 1 row. Ordinary nonempty entity/raw pages use 2/1 reads,
-plus an opposite probe when a cursor is supplied and a count unless disabled.
+plus an opposite probe when a cursor is supplied and checks are enabled, and a count unless disabled.
 Large entity pages and actual composite identity collisions require additional
 hydration batches. LIMIT bounds returned probe rows, not necessarily scanned work.
 

@@ -121,7 +121,7 @@ const paginator = new CursorPaginator(User, {
 
 ## Results, projections, and counts
 
-`Paginated<TNode>` contains `nodes`, `totalCount`, `hasPrevPage`, `hasNextPage`, `prevPageCursor`, and `nextPageCursor`.
+`Paginated<TNode>` contains `nodes`, `totalCount`, `hasPrevPage`, `hasNextPage`, `prevPageCursor`, and `nextPageCursor`. Its availability fields remain booleans by default. `Paginated<TNode, boolean | null>` represents results whose opposite-direction availability can be unchecked.
 
 Entity mode first selects distinct root ordering tuples, bounded by `limit + 1` when a limit is supplied. It then hydrates only the retained roots through the original joins. Hydration uses batches of at most 200 roots and budgets 800 primary-key parameter values per batch, so large or unlimited pages do not create a single enormous OR expression. Limiting the root-key query avoids truncating an entity's joined collections. It does not bound the number of related rows those roots can contain.
 
@@ -133,26 +133,52 @@ For both modes, `totalCount` is the number of matching root records before apply
 
 ## Page availability and empty pages
 
-For an unchanged matching dataset, flags report actual availability on both sides of the returned page. The requested direction uses one extra root as lookahead. A request containing a cursor uses a separate opposite-direction existence probe against the first returned boundary for forward navigation or last returned boundary for backward navigation. Supplying a cursor alone does not prove that the page it came from still exists.
+By default, for an unchanged matching dataset, flags report actual availability on both sides of the returned page. The requested direction uses one extra root as lookahead. A request containing a cursor with `checkOppositePage` omitted or `true` uses a separate opposite-direction existence probe against the first returned boundary for forward navigation or last returned boundary for backward navigation. Supplying a cursor alone does not prove that the page it came from still exists.
 
-Every nonempty page retains both boundary cursors, even when a corresponding flag is false. This permits refreshes and navigation after later changes. Boundary rows may have been deleted; cursor comparisons use their stored values and do not require those rows to remain present.
+Set `checkOppositePage: false` to skip that probe. The requested-direction flag still comes from lookahead, while the opposite flag is `null`, meaning unchecked. A supplied cursor is never treated as proof of availability, and skipping a probe never fabricates a `true` or `false` answer. This option is independent of `noTotalCount`: even a computed total does not substitute for the skipped availability check.
 
-An empty page has `nodes: []` and both cursors `null`. With no input cursor, both flags are false. With an input cursor, the requested-direction flag is false and an **inclusive** opposite-direction probe uses the supplied tuple. For example, paging past the final row can return an empty page with `hasPrevPage: true` even if the only surviving row is exactly the supplied boundary. After all matching rows are deleted, both flags are false.
+| Request with `checkOppositePage: false` | `hasPrevPage`        | `hasNextPage`        |
+| --------------------------------------- | -------------------- | -------------------- |
+| No input cursor                         | `false`              | Known from lookahead |
+| Forward cursor                          | `null`               | Known from lookahead |
+| Backward cursor                         | Known from lookahead | `null`               |
+
+The instance and standalone entity/raw APIs have overloads preserving `Paginated<TNode>` for default or literal-`true` calls. Literal `false`, a dynamic boolean, or a variable typed as the broad `CursorPaginatorPaginateParams`/`PaginateOptions` returns `Paginated<TNode, boolean | null>`. Both properties are nullable in that type because the cursor's direction is encoded at runtime, although at least the requested-direction flag is always known. Preserve `true` as a literal in reusable options when a statically checked result is required. An opted-out call without a cursor also has known runtime flags, but retains the broader static result type.
+
+TypeScript can report TS7022 when a loop feeds `page.nextPageCursor` back into the input cursor and tries to infer the overloaded call's result at the same time. Break that inference cycle with an explicit page annotation:
+
+```typescript
+let cursor: string | null = null;
+for (;;) {
+  const page: Paginated<User> = await paginator.paginate(query, {
+    limit: 20,
+    pageCursor: cursor,
+  });
+  if (!page.hasNextPage) break;
+  cursor = page.nextPageCursor;
+}
+```
+
+Import `Paginated` as a type from the package entry. For a loop that opts out or uses dynamic options, annotate `Paginated<User, boolean | null>` instead. The overloads retain default boolean guarantees; a single broadly nullable signature would unnecessarily widen every caller's result.
+
+Every nonempty page retains both boundary cursors, even when a corresponding flag is false or null. This permits refreshes and navigation after later changes. Boundary rows may have been deleted; cursor comparisons use their stored values and do not require those rows to remain present.
+
+An empty page has `nodes: []` and both cursors `null`. With no input cursor, both flags are false. With an input cursor, the requested-direction flag is false and an **inclusive** opposite-direction probe uses the supplied tuple. For example, paging past the final row can return an empty page with `hasPrevPage: true` even if the only surviving row is exactly the supplied boundary. After all matching rows are deleted, both checked flags are false. With `checkOppositePage: false`, an empty cursor page instead has `false` in the requested direction and `null` in the opposite direction; both cursors remain null. Empty cursorless pages always have both flags false.
 
 ## Read consistency and costs
 
 Key selection, entity hydration, availability probing, and counting are separate reads. The paginator does not start a transaction or promise a snapshot across them. Concurrent inserts, deletes, or ordering-field updates can change the returned page, flags, and count between reads. A root deleted before hydration can leave a short page; a count may reflect a later dataset than the page. For a consistent snapshot, supply a query bound to a caller-managed transaction with appropriate database isolation. A transaction alone is not a cross-request snapshot guarantee.
 
-For entity pages fitting one hydration batch, the ordinary costs below exclude TypeORM listeners/subscribers and database work performed by application code:
+For entity pages fitting one hydration batch, the costs below exclude TypeORM listeners/subscribers and database work performed by application code. The opposite check is enabled unless explicitly disabled:
 
-| Page operation                               | Database reads                                                                |
-| -------------------------------------------- | ----------------------------------------------------------------------------- |
-| Nonempty entity page without an input cursor | Root-key read + hydration: 2                                                  |
-| Nonempty entity page with an input cursor    | Root-key read + hydration + opposite probe: 3                                 |
-| Raw page without an input cursor             | Page read: 1                                                                  |
-| Raw page with an input cursor                | Page read + opposite probe: 2                                                 |
-| Empty entity page                            | No hydration; key read plus an opposite probe only when a cursor was provided |
-| Total count enabled                          | Add 1 to the applicable row                                                   |
+| Page operation                               | Database reads                                                                                       |
+| -------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Nonempty entity page without an input cursor | Root-key read + hydration: 2                                                                         |
+| Nonempty entity page with an input cursor    | Root-key read + hydration + opposite probe: 3; **2** with `checkOppositePage: false`                 |
+| Raw page without an input cursor             | Page read: 1                                                                                         |
+| Raw page with an input cursor                | Page read + opposite probe: 2; **1** with `checkOppositePage: false`                                 |
+| Empty entity page                            | No hydration; key read plus an opposite probe only when a cursor was provided and checks are enabled |
+| Total count enabled                          | Add 1 to the applicable row                                                                          |
 
 Larger entity pages add one hydration read for each additional batch. With `K` root primary-key columns, the normal batch size is `min(200, floor(800 / K))` roots, with a minimum of one. An exceptional fallback isolates roots whose composite keys would collide in TypeORM's delimiter-based grouping, such as `("a_b", "c")` and `("a", "b_c")`. When that ambiguity occurs, separate root hydration reads prevent silent entity merging; hydration can cost one read per retained root. This exception concerns ORM grouping, not cursor identity or SQL count uniqueness.
 
@@ -164,6 +190,7 @@ The public `PaginationInputError` has a stable `name` and `code`; message wordin
 
 | Code                         | Meaning                                                                                                                                         |
 | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `INVALID_OPTION`             | `checkOppositePage` is neither a boolean nor omitted; strings, numbers, and null are rejected before SQL.                                       |
 | `INVALID_LIMIT`              | Limit is not an omitted value or a positive finite safe integer.                                                                                |
 | `INVALID_ORDER`              | Empty, duplicate, unknown, or invalid ordering; required primary-key components are missing.                                                    |
 | `INVALID_CURSOR`             | Encoding, envelope, direction, ordering compatibility, or external boundary-value validation failed; also codec parsing/serialization failures. |
@@ -177,6 +204,6 @@ Constructor-level order errors are synchronous. Query metadata, limits, and exte
 
 The suites use actual SQLite and PostgreSQL databases. Coverage includes complete forward/backward traversal, immutable caller builders, authorization parameter collisions, ungrouped OR predicates, mixed directions and NULLs, deleted boundaries and opposite pages, raw aliases, joined fan-out, partial projections, malformed inputs, composite identities, and count suppression. PostgreSQL fixtures include differing process/database timezones, a DST boundary, equal timestamps, milliseconds/microseconds, exact numeric/bigint values, and non-idempotent column transformers.
 
-In the PostgreSQL fixture with 10,007 matching roots and page limit 2, the root-key query returned 3 tuples, hydration of the 2 retained roots returned 4 joined rows, and the opposite availability probe returned 1 row using an index plan. This verifies the measured query behavior, not a constant bound on scanned rows or joined collections. The tests also measure actual read counts and confirm that `noTotalCount` removes COUNT SQL while leaving availability checks active.
+In the PostgreSQL fixture with 10,007 matching roots and page limit 2, the root-key query returned 3 tuples, hydration of the 2 retained roots returned 4 joined rows, and the opposite availability probe returned 1 row using an index plan. This verifies the measured query behavior, not a constant bound on scanned rows or joined collections. The tests also measure actual read counts: `noTotalCount` removes COUNT SQL independently of availability, and `checkOppositePage: false` removes exactly one opposite probe on cursor requests while retaining requested-direction flags, projections, and cursors. SQLite and PostgreSQL tests cover the default and opted-out modes in both directions, including empty pages; compile-time assertions preserve default boolean flags and honest nullable/raw output types.
 
 Run the commands in the [README](../README.md#development-and-validation). PostgreSQL requires `npm run test:postgres` or an explicitly configured test URL; the SQLite-only test run is not evidence for timestamp correctness. Validation results and remaining distribution work are recorded in [the backlog](../todo.md).

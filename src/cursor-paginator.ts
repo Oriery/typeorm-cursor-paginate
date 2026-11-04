@@ -31,6 +31,8 @@ export interface CursorPaginatorPaginateParams {
   limit?: number;
   /** Suppress only the total count, independently of availability flags. */
   noTotalCount?: boolean;
+  /** Defaults to true. False skips opposite-direction probes and returns null for unchecked availability. */
+  checkOppositePage?: boolean;
 }
 
 interface ResolvedOrder extends NormalizedOrder, ValueColumn {
@@ -57,10 +59,18 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
     this.transformer = options.cursorTransformer ?? new Base64Transformer();
   }
 
+  paginate(
+    qb: SelectQueryBuilder<TEntity>,
+    params?: CursorPaginatorPaginateParams & { checkOppositePage?: true },
+  ): Promise<Paginated<TEntity>>;
+  paginate(
+    qb: SelectQueryBuilder<TEntity>,
+    params: CursorPaginatorPaginateParams,
+  ): Promise<Paginated<TEntity, boolean | null>>;
   async paginate(
     qb: SelectQueryBuilder<TEntity>,
     params: CursorPaginatorPaginateParams = {},
-  ): Promise<Paginated<TEntity>> {
+  ): Promise<Paginated<TEntity, boolean | null>> {
     if (arguments.length > 2) {
       throw new PaginationInputError(
         "UNSUPPORTED_QUERY",
@@ -71,10 +81,18 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
   }
 
   /** The caller declares the actual SQL projection type; column transformers are not applied. */
+  paginateRaw<TRaw extends ObjectLiteral = Record<string, unknown>>(
+    qb: SelectQueryBuilder<TEntity>,
+    params?: CursorPaginatorPaginateParams & { checkOppositePage?: true },
+  ): Promise<Paginated<TRaw>>;
+  paginateRaw<TRaw extends ObjectLiteral = Record<string, unknown>>(
+    qb: SelectQueryBuilder<TEntity>,
+    params: CursorPaginatorPaginateParams,
+  ): Promise<Paginated<TRaw, boolean | null>>;
   async paginateRaw<TRaw extends ObjectLiteral = Record<string, unknown>>(
     qb: SelectQueryBuilder<TEntity>,
     params: CursorPaginatorPaginateParams = {},
-  ): Promise<Paginated<TRaw>> {
+  ): Promise<Paginated<TRaw, boolean | null>> {
     return this.run<TRaw>(qb, params, true);
   }
 
@@ -82,7 +100,16 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
     caller: SelectQueryBuilder<TEntity>,
     params: CursorPaginatorPaginateParams,
     raw: boolean,
-  ): Promise<Paginated<TNode>> {
+  ): Promise<Paginated<TNode, boolean | null>> {
+    if (
+      params.checkOppositePage !== undefined &&
+      typeof params.checkOppositePage !== "boolean"
+    ) {
+      throw new PaginationInputError(
+        "INVALID_OPTION",
+        "checkOppositePage must be a boolean or omitted",
+      );
+    }
     const limit = params.limit;
     if (limit !== undefined && (!Number.isSafeInteger(limit) || limit <= 0)) {
       throw new PaginationInputError(
@@ -151,26 +178,28 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
       values = hydratedValues;
     } else nodes = [];
 
-    let hasPrevPage = next ? false : hasMore;
-    let hasNextPage = next ? hasMore : false;
-    if (values.length) {
-      if (cursor) {
-        const boundary = next ? values[0] : values[values.length - 1];
-        const opposite = await this.exists(base, orders, boundary, !next);
-        if (next) hasPrevPage = opposite;
-        else hasNextPage = opposite;
+    const hasRequestedPage = values.length > 0 && hasMore;
+    let hasPrevPage: boolean | null = next ? false : hasRequestedPage;
+    let hasNextPage: boolean | null = next ? hasRequestedPage : false;
+    if (cursor) {
+      let opposite: boolean | null = null;
+      if (params.checkOppositePage !== false) {
+        // Empty pages have no new boundary; the supplied tuple is an inclusive opposite bound.
+        const boundary = values.length
+          ? next
+            ? values[0]
+            : values[values.length - 1]
+          : cursor.values;
+        opposite = await this.exists(
+          base,
+          orders,
+          boundary,
+          !next,
+          values.length === 0,
+        );
       }
-    } else if (cursor) {
-      // Empty pages have no new boundary; the supplied tuple is an inclusive opposite bound.
-      const opposite = await this.exists(
-        base,
-        orders,
-        cursor.values,
-        !next,
-        true,
-      );
-      hasPrevPage = next && opposite;
-      hasNextPage = !next && opposite;
+      if (next) hasPrevPage = opposite;
+      else hasNextPage = opposite;
     }
     const totalCount = params.noTotalCount
       ? null

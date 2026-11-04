@@ -707,7 +707,10 @@ describe("v3 core regressions with SQLite", () => {
     let cursor: string | null = null;
     let visits = 0;
     for (;;) {
-      const page = await byId().paginate(qb, { limit: 2, pageCursor: cursor });
+      const page: Paginated<CoreRecord> = await byId().paginate(qb, {
+        limit: 2,
+        pageCursor: cursor,
+      });
       pages.push(
         ...page.nodes.map(
           (node) => JSON.parse(JSON.stringify(node)) as unknown,

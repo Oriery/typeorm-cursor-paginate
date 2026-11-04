@@ -21,13 +21,16 @@ export interface CursorEnvelope {
   values: CursorValue[];
 }
 
-export interface Paginated<TNode> {
+export interface Paginated<
+  TNode,
+  TAvailability extends boolean | null = boolean,
+> {
   /** Matching root rows before the cursor; null when noTotalCount is true. */
   readonly totalCount: number | null;
-  /** Availability at the time of the corresponding read, not a snapshot guarantee. */
-  readonly hasPrevPage: boolean;
-  readonly hasNextPage: boolean;
-  /** Nonempty pages retain both boundary cursors, even when a flag is false. */
+  /** Availability at the corresponding read; null only when an opposite check is skipped. */
+  readonly hasPrevPage: TAvailability;
+  readonly hasNextPage: TAvailability;
+  /** Nonempty pages retain both boundary cursors, even when a flag is false or unchecked. */
   readonly prevPageCursor: string | null;
   readonly nextPageCursor: string | null;
   readonly nodes: TNode[];

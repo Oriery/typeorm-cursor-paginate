@@ -63,6 +63,20 @@ Equal names retain descending ID order. Each nonempty page has both `prevPageCur
 
 `limit` must be a positive safe integer. Omitting it deliberately returns all remaining matching roots. `noTotalCount: true` returns `totalCount: null` and skips the count query without weakening availability flags.
 
+`checkOppositePage` defaults to `true`. For consumers that only need availability in the requested direction, set it to `false` to save one query on cursor requests:
+
+```typescript
+const forward = await paginator.paginate(query, {
+  limit: 20,
+  pageCursor: first.nextPageCursor,
+  noTotalCount: true,
+  checkOppositePage: false,
+});
+// hasNextPage remains a boolean; hasPrevPage is null (unchecked).
+```
+
+For backward requests, `hasPrevPage` remains known and `hasNextPage` becomes `null`. Cursorless pages keep both flags known without an extra query. Total counting is independent of this option. Default calls retain boolean flag types; opting out or passing a dynamic boolean returns `Paginated<TNode, boolean | null>`. See the [availability contract](docs/core-contract.md#page-availability-and-empty-pages) for empty pages and reusable options.
+
 For a single call, use the named convenience function:
 
 ```typescript
@@ -75,7 +89,7 @@ const page = await paginate(User, query, {
 });
 ```
 
-Here and below, `query` is a builder prepared as in `readUsers`. The source entry also retains `paginate` as a default export; package-level CJS/ESM behavior is still subject to section B's distribution checks.
+Here and in the availability example, `query` is a builder prepared as in `readUsers`, and `first` is its first-page result. The source entry also retains `paginate` as a default export; package-level CJS/ESM behavior is still subject to section B's distribution checks.
 
 ## NULLs and raw projections
 

@@ -25,7 +25,7 @@ class AvailabilityRecord {
 }
 
 type Mode = "entity" | "raw";
-type Options = CursorPaginatorPaginateParams & { checkOppositePage?: boolean };
+type Options = CursorPaginatorPaginateParams;
 type Page = {
   nodes: unknown[];
   totalCount: number | null;
@@ -111,10 +111,11 @@ describe("optional opposite-page availability on SQLite", () => {
   it.each([null, 0, "false"])(
     "rejects invalid checkOppositePage %p before SQL",
     async (value) => {
-      const result: unknown = Reflect.apply(paginator.paginate, paginator, [
-        query("entity"),
-        { checkOppositePage: value },
-      ]);
+      const result: unknown = Reflect.apply(
+        paginator.paginate.bind(paginator),
+        paginator,
+        [query("entity"), { checkOppositePage: value }],
+      );
       await expect(result).rejects.toMatchObject({
         name: "PaginationInputError",
         code: "INVALID_OPTION",
@@ -137,9 +138,9 @@ describe("optional opposite-page availability on SQLite", () => {
         totalCount: null,
         hasPrevPage: false,
         hasNextPage: true,
-        prevPageCursor: expect.any(String),
-        nextPageCursor: expect.any(String),
       });
+      expect(page.prevPageCursor).toEqual(expect.any(String));
+      expect(page.nextPageCursor).toEqual(expect.any(String));
       expectNoProbe(pageReads);
     });
 

@@ -228,7 +228,10 @@ postgres("PostgreSQL core correctness (isolated database)", () => {
     const pages: Paginated<PageEvent>[] = [];
     let cursor: string | null = null;
     for (let guard = 0; guard <= expected.length; guard++) {
-      const page = await paginator.paginate(qb, { limit, pageCursor: cursor });
+      const page: Paginated<PageEvent> = await paginator.paginate(qb, {
+        limit,
+        pageCursor: cursor,
+      });
       pages.push(page);
       expect(page.totalCount).toBe(expected.length);
       if (!page.hasNextPage) break;
@@ -759,6 +762,8 @@ postgres("PostgreSQL core correctness (isolated database)", () => {
     });
     const rowId: number = second.nodes[0].eventId;
     expect(rowId).toBe(3);
+    // @ts-expect-error The explicit raw result type must not widen to ObjectLiteral/any.
+    expect(second.nodes[0].unselectedColumn).toBeUndefined();
     expect(second.nodes).toEqual([{ eventId: 3 }, { eventId: 4 }]);
     expect(second.totalCount).toBe(6);
     expect(second.hasPrevPage).toBeNull();
