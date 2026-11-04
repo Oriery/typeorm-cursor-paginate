@@ -244,9 +244,12 @@ Sources: [package entry](src/index.ts), [standalone paginate](src/paginate.ts) a
 - [ ] Recommendation: document named `paginate` and `CursorPaginator` exports as the primary API.
       Decide deliberately whether a default export remains, and test its real runtime meaning if retained.
 - [x] Finalize raw-mode overloads or a separate raw API with the output and boundary types from A5.
+      Both raw APIs default to `Record<string, unknown>`; removed/malformed codec options fail explicitly.
 - [x] Remove the redundant entity argument or validate it against query metadata.
       The entity argument is retained and validated against root query metadata.
 - [x] Publish the validated cursor-transformer, supported-query and error contracts from A.
+
+B prerequisite revalidation on 2026-11-04 passed 215 SQLite/input tests and all 44 PostgreSQL tests, plus typecheck and lint. Regression-first API checks closed the standalone raw `any` inference gap and rejected the removed `transformer` option instead of silently dropping custom codec behavior. No blocking A prerequisite remains.
 
 ### B2. Build and package entry points
 

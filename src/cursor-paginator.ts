@@ -55,8 +55,24 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
     public readonly entity: ObjectType<TEntity>,
     options: CursorPaginatorParams<TEntity>,
   ) {
+    if ("transformer" in options)
+      throw new PaginationInputError(
+        "INVALID_OPTION",
+        "The transformer option was renamed to cursorTransformer in v3",
+      );
+    const transformer = options.cursorTransformer;
+    if (
+      transformer !== undefined &&
+      (transformer === null ||
+        typeof transformer.parse !== "function" ||
+        typeof transformer.stringify !== "function")
+    )
+      throw new PaginationInputError(
+        "INVALID_OPTION",
+        "cursorTransformer must provide parse and stringify functions",
+      );
     this.orders = normalizeOrderBy(options.orderBy);
-    this.transformer = options.cursorTransformer ?? new Base64Transformer();
+    this.transformer = transformer ?? new Base64Transformer();
   }
 
   paginate(
