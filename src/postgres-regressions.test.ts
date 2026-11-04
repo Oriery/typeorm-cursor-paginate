@@ -709,7 +709,7 @@ postgres("PostgreSQL core correctness (isolated database)", () => {
       limit: 2,
       pageCursor: first.nextPageCursor,
       noTotalCount: true,
-      checkOppositePage: false,
+      noOppositePageCheck: true,
     });
     expect(skipped.nodes.map((node) => node.id)).toEqual([3, 4]);
     // @ts-expect-error An opt-out result cannot promise a boolean opposite flag.
@@ -725,7 +725,7 @@ postgres("PostgreSQL core correctness (isolated database)", () => {
       limit: 2,
       pageCursor: first.nextPageCursor,
       noTotalCount: true,
-      checkOppositePage: true,
+      noOppositePageCheck: false,
     });
     expect(requireBoolean(checked.hasPrevPage)).toBe(true);
     expect(requireBoolean(checked.hasNextPage)).toBe(true);
@@ -747,7 +747,7 @@ postgres("PostgreSQL core correctness (isolated database)", () => {
       .select("e.id", "eventId");
     const first = await paginator.paginateRaw<{ eventId: number }>(qb, {
       limit: 2,
-      checkOppositePage: false,
+      noOppositePageCheck: true,
       noTotalCount: true,
     });
     expect(first.hasPrevPage).toBe(false);
@@ -758,7 +758,7 @@ postgres("PostgreSQL core correctness (isolated database)", () => {
       orderBy: { id: "ASC" },
       limit: 2,
       pageCursor: first.nextPageCursor,
-      checkOppositePage: false,
+      noOppositePageCheck: true,
     });
     const rowId: number = second.nodes[0].eventId;
     expect(rowId).toBe(3);
@@ -781,7 +781,7 @@ postgres("PostgreSQL core correctness (isolated database)", () => {
     const backward = await paginator.paginateRaw<{ eventId: number }>(qb, {
       limit: 2,
       pageCursor: second.prevPageCursor,
-      checkOppositePage: false,
+      noOppositePageCheck: true,
       noTotalCount: true,
     });
     expect(backward.nodes).toEqual(first.nodes);
@@ -808,7 +808,7 @@ postgres("PostgreSQL core correctness (isolated database)", () => {
       const empty = await paginator.paginate(qb, {
         limit: 2,
         pageCursor,
-        checkOppositePage: false,
+        noOppositePageCheck: true,
         noTotalCount: true,
       });
       expect(empty).toEqual({
@@ -839,21 +839,21 @@ postgres("PostgreSQL core correctness (isolated database)", () => {
       orderBy: { id: "ASC" },
       limit: 2,
       noTotalCount: true,
-      checkOppositePage: true,
+      noOppositePageCheck: false,
     });
     expect(requireBoolean(raw.hasPrevPage)).toBe(false);
     expect(requireBoolean(raw.hasNextPage)).toBe(true);
 
-    const fetch = (checkOppositePage: boolean) =>
+    const fetch = (noOppositePageCheck: boolean) =>
       paginate(PageEvent, qb, {
         orderBy: { id: "ASC" },
         limit: 2,
         pageCursor: first.nextPageCursor,
         noTotalCount: true,
-        checkOppositePage,
+        noOppositePageCheck,
       });
     queryLog.length = 0;
-    const dynamic = await fetch(false);
+    const dynamic = await fetch(true);
     // @ts-expect-error Dynamic configuration can disable the opposite check.
     expect(requireBoolean(dynamic.hasPrevPage)).toBeNull();
     expect(dynamic.hasNextPage).toBe(true);

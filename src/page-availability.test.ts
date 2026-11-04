@@ -109,12 +109,12 @@ describe("optional opposite-page availability on SQLite", () => {
   }
 
   it.each([null, 0, "false"])(
-    "rejects invalid checkOppositePage %p before SQL",
+    "rejects invalid noOppositePageCheck %p before SQL",
     async (value) => {
       const result: unknown = Reflect.apply(
         paginator.paginate.bind(paginator),
         paginator,
-        [query("entity"), { checkOppositePage: value }],
+        [query("entity"), { noOppositePageCheck: value }],
       );
       await expect(result).rejects.toMatchObject({
         name: "PaginationInputError",
@@ -131,7 +131,7 @@ describe("optional opposite-page availability on SQLite", () => {
       const page = await read(mode, query(mode), {
         limit: 2,
         noTotalCount: true,
-        checkOppositePage: false,
+        noOppositePageCheck: true,
       });
       expect(page).toMatchObject({
         nodes: nodes(mode, [1, 2]),
@@ -163,7 +163,7 @@ describe("optional opposite-page availability on SQLite", () => {
       statements.length = 0;
       const skipped = await read(mode, qb, {
         ...options,
-        checkOppositePage: false,
+        noOppositePageCheck: true,
       });
       expect(skipped).toEqual({ ...exact, hasPrevPage: null });
       expect(skipped.nodes).toEqual(nodes(mode, [3, 4]));
@@ -173,7 +173,7 @@ describe("optional opposite-page availability on SQLite", () => {
 
       statements.length = 0;
       expect(
-        await read(mode, qb, { ...options, checkOppositePage: true }),
+        await read(mode, qb, { ...options, noOppositePageCheck: false }),
       ).toEqual(exact);
       expect(statements).toHaveLength(pageReads + 1);
     });
@@ -200,7 +200,7 @@ describe("optional opposite-page availability on SQLite", () => {
       statements.length = 0;
       const skipped = await read(mode, qb, {
         ...options,
-        checkOppositePage: false,
+        noOppositePageCheck: true,
       });
       expect(skipped).toEqual({ ...exact, hasNextPage: null });
       expectNoProbe(pageReads);
@@ -213,7 +213,7 @@ describe("optional opposite-page availability on SQLite", () => {
       const page = await read(mode, qb, {
         limit: 2,
         pageCursor: first.nextPageCursor,
-        checkOppositePage: false,
+        noOppositePageCheck: true,
       });
       expect(page).toMatchObject({
         totalCount: 6,
@@ -237,7 +237,7 @@ describe("optional opposite-page availability on SQLite", () => {
           pageCursor:
             direction === "forward" ? all.nextPageCursor : all.prevPageCursor,
           noTotalCount: true,
-          checkOppositePage: false,
+          noOppositePageCheck: true,
         });
         expect(page).toEqual({
           nodes: [],
@@ -256,7 +256,7 @@ describe("optional opposite-page availability on SQLite", () => {
       const page = await read(mode, qb, {
         limit: 2,
         noTotalCount: true,
-        checkOppositePage: false,
+        noOppositePageCheck: true,
       });
       expect(page).toEqual({
         nodes: [],
@@ -283,7 +283,7 @@ describe("optional opposite-page availability on SQLite", () => {
       statements.length = 0;
       const skipped = await read(mode, qb, {
         ...options,
-        checkOppositePage: false,
+        noOppositePageCheck: true,
       });
       expect(skipped).toEqual({ ...exact, hasPrevPage: null });
       expectNoProbe(pageReads);
@@ -306,7 +306,7 @@ describe("optional opposite-page availability on SQLite", () => {
               ? first.nextPageCursor
               : middle.prevPageCursor,
           noTotalCount: true,
-          checkOppositePage: false,
+          noOppositePageCheck: true,
         });
         expect(page).toMatchObject({
           nodes: nodes(mode, direction === "forward" ? [3, 4, 5, 6] : [1, 2]),
@@ -328,7 +328,7 @@ describe("optional opposite-page availability on SQLite", () => {
         limit: 2,
         pageCursor: first.nextPageCursor,
         noTotalCount: true,
-        checkOppositePage: false,
+        noOppositePageCheck: true,
       };
       statements.length = 0;
       const page =

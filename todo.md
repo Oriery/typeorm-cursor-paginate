@@ -138,7 +138,7 @@ Sources: [page flags](src/cursor-paginator.ts), [public result contract](src/int
 - [x] Replace the skipped opposite-direction deletion test with an active test for the chosen contract.
       Add backward paging, deletion of all earlier/later rows, and mutation between reads.
 - [x] Keep `noTotalCount` independent of page availability, and verify that it suppresses the count query.
-- [x] Add `checkOppositePage: false` as an explicit opt-out from opposite-direction probes, keeping checked boolean flags by default and nullable types only for opted-out or dynamic calls.
+- [x] Add `noOppositePageCheck: true` as an explicit opt-out (default `false`, matching `noTotalCount`) from opposite-direction probes, keeping checked boolean flags by default and nullable types only for opted-out or dynamic calls.
       Preserve known cursorless flags, requested-direction lookahead, both boundary cursors, and independence from total counting; verify the saved query in SQLite and PostgreSQL.
 - [x] Measure query counts and joined-row fan-out for the final algorithms; document the supported consistency guarantees and cost of exact flags.
 
@@ -168,7 +168,7 @@ Decisions applied throughout A:
   colliding composite root identities; unsupported joined identity shapes fail
   before SQL rather than silently losing related entities.
 - Availability defaults to lookahead plus an opposite-direction bounded-output probe,
-  independently of totals. `checkOppositePage: false` saves the opposite probe on
+  independently of totals. `noOppositePageCheck: true` saves the opposite probe on
   cursor requests and returns `null` only for the unchecked direction. Empty pages have null cursors and use the supplied
   boundary for an inclusive opposite probe. Separate reads do not promise a
   snapshot during concurrent changes.

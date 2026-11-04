@@ -13,7 +13,7 @@ export type PaginateOptions<TEntity extends ObjectLiteral> =
 export function paginate<TEntity extends ObjectLiteral>(
   entity: ObjectType<TEntity>,
   qb: SelectQueryBuilder<TEntity>,
-  options: PaginateOptions<TEntity> & { checkOppositePage?: true },
+  options: PaginateOptions<TEntity> & { noOppositePageCheck?: false },
 ): Promise<Paginated<TEntity>>;
 export function paginate<TEntity extends ObjectLiteral>(
   entity: ObjectType<TEntity>,
@@ -40,7 +40,7 @@ export function paginateRaw<
 >(
   entity: ObjectType<TEntity>,
   qb: SelectQueryBuilder<TEntity>,
-  options: PaginateOptions<TEntity> & { checkOppositePage?: true },
+  options: PaginateOptions<TEntity> & { noOppositePageCheck?: false },
 ): Promise<Paginated<TRaw>>;
 export function paginateRaw<
   TRaw extends ObjectLiteral,

@@ -133,17 +133,17 @@ For both modes, `totalCount` is the number of matching root records before apply
 
 ## Page availability and empty pages
 
-By default, for an unchanged matching dataset, flags report actual availability on both sides of the returned page. The requested direction uses one extra root as lookahead. A request containing a cursor with `checkOppositePage` omitted or `true` uses a separate opposite-direction existence probe against the first returned boundary for forward navigation or last returned boundary for backward navigation. Supplying a cursor alone does not prove that the page it came from still exists.
+By default, for an unchanged matching dataset, flags report actual availability on both sides of the returned page. The requested direction uses one extra root as lookahead. A request containing a cursor with `noOppositePageCheck` omitted or `false` uses a separate opposite-direction existence probe against the first returned boundary for forward navigation or last returned boundary for backward navigation. Supplying a cursor alone does not prove that the page it came from still exists.
 
-Set `checkOppositePage: false` to skip that probe. The requested-direction flag still comes from lookahead, while the opposite flag is `null`, meaning unchecked. A supplied cursor is never treated as proof of availability, and skipping a probe never fabricates a `true` or `false` answer. This option is independent of `noTotalCount`: even a computed total does not substitute for the skipped availability check.
+`noOppositePageCheck` defaults to `false`, following the opt-out convention of `noTotalCount`. Set `noOppositePageCheck: true` to skip that probe. The requested-direction flag still comes from lookahead, while the opposite flag is `null`, meaning unchecked. A supplied cursor is never treated as proof of availability, and skipping a probe never fabricates a `true` or `false` answer. This option is independent of `noTotalCount`: even a computed total does not substitute for the skipped availability check.
 
-| Request with `checkOppositePage: false` | `hasPrevPage`        | `hasNextPage`        |
-| --------------------------------------- | -------------------- | -------------------- |
-| No input cursor                         | `false`              | Known from lookahead |
-| Forward cursor                          | `null`               | Known from lookahead |
-| Backward cursor                         | Known from lookahead | `null`               |
+| Request with `noOppositePageCheck: true` | `hasPrevPage`        | `hasNextPage`        |
+| ---------------------------------------- | -------------------- | -------------------- |
+| No input cursor                          | `false`              | Known from lookahead |
+| Forward cursor                           | `null`               | Known from lookahead |
+| Backward cursor                          | Known from lookahead | `null`               |
 
-The instance and standalone entity/raw APIs have overloads preserving `Paginated<TNode>` for default or literal-`true` calls. Literal `false`, a dynamic boolean, or a variable typed as the broad `CursorPaginatorPaginateParams`/`PaginateOptions` returns `Paginated<TNode, boolean | null>`. Both properties are nullable in that type because the cursor's direction is encoded at runtime, although at least the requested-direction flag is always known. Preserve `true` as a literal in reusable options when a statically checked result is required. An opted-out call without a cursor also has known runtime flags, but retains the broader static result type.
+The instance and standalone entity/raw APIs have overloads preserving `Paginated<TNode>` for default or literal-`false` calls. Literal `true`, a dynamic boolean, or a variable typed as the broad `CursorPaginatorPaginateParams`/`PaginateOptions` returns `Paginated<TNode, boolean | null>`. Both properties are nullable in that type because the cursor's direction is encoded at runtime, although at least the requested-direction flag is always known. Preserve `false` as a literal in reusable options when a statically checked result is required. An opted-out call without a cursor also has known runtime flags, but retains the broader static result type.
 
 TypeScript can report TS7022 when a loop feeds `page.nextPageCursor` back into the input cursor and tries to infer the overloaded call's result at the same time. Break that inference cycle with an explicit page annotation:
 
@@ -163,7 +163,7 @@ Import `Paginated` as a type from the package entry. For a loop that opts out or
 
 Every nonempty page retains both boundary cursors, even when a corresponding flag is false or null. This permits refreshes and navigation after later changes. Boundary rows may have been deleted; cursor comparisons use their stored values and do not require those rows to remain present.
 
-An empty page has `nodes: []` and both cursors `null`. With no input cursor, both flags are false. With an input cursor, the requested-direction flag is false and an **inclusive** opposite-direction probe uses the supplied tuple. For example, paging past the final row can return an empty page with `hasPrevPage: true` even if the only surviving row is exactly the supplied boundary. After all matching rows are deleted, both checked flags are false. With `checkOppositePage: false`, an empty cursor page instead has `false` in the requested direction and `null` in the opposite direction; both cursors remain null. Empty cursorless pages always have both flags false.
+An empty page has `nodes: []` and both cursors `null`. With no input cursor, both flags are false. With an input cursor, the requested-direction flag is false and an **inclusive** opposite-direction probe uses the supplied tuple. For example, paging past the final row can return an empty page with `hasPrevPage: true` even if the only surviving row is exactly the supplied boundary. After all matching rows are deleted, both checked flags are false. With `noOppositePageCheck: true`, an empty cursor page instead has `false` in the requested direction and `null` in the opposite direction; both cursors remain null. Empty cursorless pages always have both flags false.
 
 ## Read consistency and costs
 
@@ -174,9 +174,9 @@ For entity pages fitting one hydration batch, the costs below exclude TypeORM li
 | Page operation                               | Database reads                                                                                       |
 | -------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
 | Nonempty entity page without an input cursor | Root-key read + hydration: 2                                                                         |
-| Nonempty entity page with an input cursor    | Root-key read + hydration + opposite probe: 3; **2** with `checkOppositePage: false`                 |
+| Nonempty entity page with an input cursor    | Root-key read + hydration + opposite probe: 3; **2** with `noOppositePageCheck: true`                |
 | Raw page without an input cursor             | Page read: 1                                                                                         |
-| Raw page with an input cursor                | Page read + opposite probe: 2; **1** with `checkOppositePage: false`                                 |
+| Raw page with an input cursor                | Page read + opposite probe: 2; **1** with `noOppositePageCheck: true`                                |
 | Empty entity page                            | No hydration; key read plus an opposite probe only when a cursor was provided and checks are enabled |
 | Total count enabled                          | Add 1 to the applicable row                                                                          |
 
@@ -190,7 +190,7 @@ The public `PaginationInputError` has a stable `name` and `code`; message wordin
 
 | Code                         | Meaning                                                                                                                                         |
 | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `INVALID_OPTION`             | `checkOppositePage` is neither a boolean nor omitted; strings, numbers, and null are rejected before SQL.                                       |
+| `INVALID_OPTION`             | `noOppositePageCheck` is neither a boolean nor omitted; strings, numbers, and null are rejected before SQL.                                     |
 | `INVALID_LIMIT`              | Limit is not an omitted value or a positive finite safe integer.                                                                                |
 | `INVALID_ORDER`              | Empty, duplicate, unknown, or invalid ordering; required primary-key components are missing.                                                    |
 | `INVALID_CURSOR`             | Encoding, envelope, direction, ordering compatibility, or external boundary-value validation failed; also codec parsing/serialization failures. |
@@ -204,6 +204,6 @@ Constructor-level order errors are synchronous. Query metadata, limits, and exte
 
 The suites use actual SQLite and PostgreSQL databases. Coverage includes complete forward/backward traversal, immutable caller builders, authorization parameter collisions, ungrouped OR predicates, mixed directions and NULLs, deleted boundaries and opposite pages, raw aliases, joined fan-out, partial projections, malformed inputs, composite identities, and count suppression. PostgreSQL fixtures include differing process/database timezones, a DST boundary, equal timestamps, milliseconds/microseconds, exact numeric/bigint values, and non-idempotent column transformers.
 
-In the PostgreSQL fixture with 10,007 matching roots and page limit 2, the root-key query returned 3 tuples, hydration of the 2 retained roots returned 4 joined rows, and the opposite availability probe returned 1 row using an index plan. This verifies the measured query behavior, not a constant bound on scanned rows or joined collections. The tests also measure actual read counts: `noTotalCount` removes COUNT SQL independently of availability, and `checkOppositePage: false` removes exactly one opposite probe on cursor requests while retaining requested-direction flags, projections, and cursors. SQLite and PostgreSQL tests cover the default and opted-out modes in both directions, including empty pages; compile-time assertions preserve default boolean flags and honest nullable/raw output types.
+In the PostgreSQL fixture with 10,007 matching roots and page limit 2, the root-key query returned 3 tuples, hydration of the 2 retained roots returned 4 joined rows, and the opposite availability probe returned 1 row using an index plan. This verifies the measured query behavior, not a constant bound on scanned rows or joined collections. The tests also measure actual read counts: `noTotalCount` removes COUNT SQL independently of availability, and `noOppositePageCheck: true` removes exactly one opposite probe on cursor requests while retaining requested-direction flags, projections, and cursors. SQLite and PostgreSQL tests cover the default and opted-out modes in both directions, including empty pages; compile-time assertions preserve default boolean flags and honest nullable/raw output types.
 
 Run the commands in the [README](../README.md#development-and-validation). PostgreSQL requires `npm run test:postgres` or an explicitly configured test URL; the SQLite-only test run is not evidence for timestamp correctness. Validation results and remaining distribution work are recorded in [the backlog](../todo.md).

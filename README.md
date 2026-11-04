@@ -63,14 +63,14 @@ Equal names retain descending ID order. Each nonempty page has both `prevPageCur
 
 `limit` must be a positive safe integer. Omitting it deliberately returns all remaining matching roots. `noTotalCount: true` returns `totalCount: null` and skips the count query without weakening availability flags.
 
-`checkOppositePage` defaults to `true`. For consumers that only need availability in the requested direction, set it to `false` to save one query on cursor requests:
+`noOppositePageCheck` defaults to `false`, like `noTotalCount`. For consumers that only need availability in the requested direction, set it to `true` to save one query on cursor requests:
 
 ```typescript
 const forward = await paginator.paginate(query, {
   limit: 20,
   pageCursor: first.nextPageCursor,
   noTotalCount: true,
-  checkOppositePage: false,
+  noOppositePageCheck: true,
 });
 // hasNextPage remains a boolean; hasPrevPage is null (unchecked).
 ```

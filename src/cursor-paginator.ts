@@ -31,8 +31,8 @@ export interface CursorPaginatorPaginateParams {
   limit?: number;
   /** Suppress only the total count, independently of availability flags. */
   noTotalCount?: boolean;
-  /** Defaults to true. False skips opposite-direction probes and returns null for unchecked availability. */
-  checkOppositePage?: boolean;
+  /** Defaults to false. True skips opposite-direction probes and returns null for unchecked availability. */
+  noOppositePageCheck?: boolean;
 }
 
 interface ResolvedOrder extends NormalizedOrder, ValueColumn {
@@ -61,7 +61,7 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
 
   paginate(
     qb: SelectQueryBuilder<TEntity>,
-    params?: CursorPaginatorPaginateParams & { checkOppositePage?: true },
+    params?: CursorPaginatorPaginateParams & { noOppositePageCheck?: false },
   ): Promise<Paginated<TEntity>>;
   paginate(
     qb: SelectQueryBuilder<TEntity>,
@@ -83,7 +83,7 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
   /** The caller declares the actual SQL projection type; column transformers are not applied. */
   paginateRaw<TRaw extends ObjectLiteral = Record<string, unknown>>(
     qb: SelectQueryBuilder<TEntity>,
-    params?: CursorPaginatorPaginateParams & { checkOppositePage?: true },
+    params?: CursorPaginatorPaginateParams & { noOppositePageCheck?: false },
   ): Promise<Paginated<TRaw>>;
   paginateRaw<TRaw extends ObjectLiteral = Record<string, unknown>>(
     qb: SelectQueryBuilder<TEntity>,
@@ -102,12 +102,12 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
     raw: boolean,
   ): Promise<Paginated<TNode, boolean | null>> {
     if (
-      params.checkOppositePage !== undefined &&
-      typeof params.checkOppositePage !== "boolean"
+      params.noOppositePageCheck !== undefined &&
+      typeof params.noOppositePageCheck !== "boolean"
     ) {
       throw new PaginationInputError(
         "INVALID_OPTION",
-        "checkOppositePage must be a boolean or omitted",
+        "noOppositePageCheck must be a boolean or omitted",
       );
     }
     const limit = params.limit;
@@ -183,7 +183,7 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
     let hasNextPage: boolean | null = next ? hasRequestedPage : false;
     if (cursor) {
       let opposite: boolean | null = null;
-      if (params.checkOppositePage !== false) {
+      if (params.noOppositePageCheck !== true) {
         // Empty pages have no new boundary; the supplied tuple is an inclusive opposite bound.
         const boundary = values.length
           ? next
