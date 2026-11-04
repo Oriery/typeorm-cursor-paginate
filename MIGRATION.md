@@ -2,7 +2,7 @@
 
 ## v2 to v3
 
-v3 is a deliberate major release: it changes cursor format, validation, ordering guarantees, raw-result types, package entry points, and runtime support. Validate the local `3.0.0-rc.0` tarball before adopting it. Stable npm publication remains a separate stage.
+v3 is a deliberate major release: it changes cursor format, validation, ordering guarantees, raw-result types, package entry points, and runtime support. Validate the packed `3.0.0` artifact before adopting it. See the [release notes](CHANGELOG.md) for publication status and verification.
 
 ### Restart existing pagination
 
@@ -89,6 +89,8 @@ import paginateDefault, {
 ```
 
 The ESM facade delegates to the same CommonJS implementation. Mixed imports preserve constructor identity, including `instanceof PaginationInputError`; there are no separate class copies. CommonJS declarations use `.d.ts` and native ESM declarations use `.d.mts`, re-exporting the same canonical types.
+
+The exports map places a fallback `types` target after the import/require branches. This lets legacy CommonJS declaration emission name inferred public types while NodeNext/Node16 still select their branch-specific declarations. Consumer checks include exported factory-derived classes with both explicit and default CommonJS resolution.
 
 Use `import type` for `Paginated`, `PaginateOptions`, `CursorPaginatorParams`, `CursorPaginatorPaginateParams`, `CursorTransformer`, `CursorEnvelope`, `CursorValue`, `Order`, `OrderBy`, `NormalizedOrder`, and `PaginationInputErrorCode`. These names have no runtime values. Old `Cursor<TEntity>` and `DirectionalCursor<TEntity>` types are removed. `Paginated` now describes the actual node type rather than implying raw rows are entities; its second optional type parameter describes nullable availability flags.
 

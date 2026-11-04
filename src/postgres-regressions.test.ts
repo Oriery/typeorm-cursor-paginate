@@ -66,6 +66,62 @@ class PageEvent {
 
   @OneToMany(() => PageNote, (note) => note.event)
   notes!: PageNote[];
+
+  @OneToMany(() => PageLabel, (label) => label.event)
+  labels!: PageLabel[];
+
+  @OneToMany(() => PageArrayKey, (key) => key.event)
+  arrayKeys!: PageArrayKey[];
+
+  @OneToMany(() => PageJsonKey, (key) => key.event)
+  jsonKeys!: PageJsonKey[];
+
+  displayOwner?: PageOwner | null;
+}
+
+@Entity("page_array_key")
+class PageArrayKey {
+  @PrimaryColumn({ type: "integer", array: true })
+  key!: number[];
+
+  @ManyToOne(() => PageEvent, (event) => event.arrayKeys)
+  @JoinColumn({ name: "eventId" })
+  event!: PageEvent;
+
+  @Column("integer")
+  eventId!: number;
+}
+
+@Entity("page_json_key")
+class PageJsonKey {
+  @PrimaryColumn("jsonb")
+  key!: { id: number };
+
+  @ManyToOne(() => PageEvent, (event) => event.jsonKeys)
+  @JoinColumn({ name: "eventId" })
+  event!: PageEvent;
+
+  @Column("integer")
+  eventId!: number;
+}
+
+@Entity("page_label")
+class PageLabel {
+  @PrimaryColumn("uuid")
+  namespaceId!: string;
+
+  @PrimaryColumn("uuid")
+  objectId!: string;
+
+  @PrimaryColumn({ type: "enum", enum: ["title", "display_name"] })
+  field!: string;
+
+  @ManyToOne(() => PageEvent, (event) => event.labels)
+  @JoinColumn({ name: "eventId" })
+  event!: PageEvent;
+
+  @Column("integer")
+  eventId!: number;
 }
 
 @Entity("page_note")
@@ -105,7 +161,14 @@ postgres("PostgreSQL core correctness (isolated database)", () => {
     db = await new DataSource({
       type: "postgres",
       url: url.toString(),
-      entities: [PageEvent, PageOwner, PageNote],
+      entities: [
+        PageEvent,
+        PageOwner,
+        PageNote,
+        PageLabel,
+        PageArrayKey,
+        PageJsonKey,
+      ],
       synchronize: true,
       extra: { options: "-c timezone=Europe/Berlin" },
       logging: ["query"],
@@ -269,6 +332,85 @@ postgres("PostgreSQL core correctness (isolated database)", () => {
       expect(hydrated[column].getMilliseconds()).toBe(0);
       await traverse({ [column]: "ASC", id: "DESC" }, [1, 2, 4, 3, 5, 6]);
       await traverse({ [column]: "DESC", id: "ASC" }, [6, 5, 3, 4, 2, 1]);
+    },
+  );
+
+  it.each(["whole alias", "direct columns"])(
+    "hydrates exact composite UUID/enum joined identities with %s",
+    async (selection) => {
+      const namespaceId = "00000000-0000-4000-8000-000000000001";
+      const objectId = "00000000-0000-4000-8000-000000000002";
+      await db.getRepository(PageLabel).save([
+        { namespaceId, objectId, field: "title", eventId: 1 },
+        { namespaceId, objectId, field: "display_name", eventId: 1 },
+        { namespaceId, objectId: namespaceId, field: "title", eventId: 2 },
+      ]);
+      const makeQuery = () => {
+        const qb = db.getRepository(PageEvent).createQueryBuilder("e");
+        if (selection === "whole alias")
+          qb.leftJoinAndSelect("e.labels", "label");
+        else
+          qb.leftJoin("e.labels", "label").addSelect([
+            "label.namespaceId",
+            "label.objectId",
+            "label.field",
+            "label.eventId",
+          ]);
+        return qb
+          .leftJoinAndSelect("e.notes", "note")
+          .leftJoinAndMapOne(
+            "e.displayOwner",
+            PageOwner,
+            "displayOwner",
+            "displayOwner.id = e.ownerId AND displayOwner.id = :visibleOwner",
+            { visibleOwner: 1 },
+          );
+      };
+      const pages = await traverse(
+        { happenedAt: "ASC", id: "DESC" },
+        [1, 2, 4, 3, 5, 6],
+        makeQuery,
+        2,
+      );
+      const nodes = pages.flatMap((page) => page.nodes);
+      expect(nodes[0].labels.map((label) => label.field).sort()).toEqual([
+        "display_name",
+        "title",
+      ]);
+      expect(nodes[0].notes).toHaveLength(3);
+      expect(nodes[1].labels).toHaveLength(1);
+      expect(nodes.at(-1)!.displayOwner).toBeNull();
+      expect(
+        nodes.slice(0, -1).every((node) => node.displayOwner?.id === 1),
+      ).toBe(true);
+    },
+  );
+
+  it.each([
+    [
+      "arrayKeys",
+      "INSERT INTO page_array_key VALUES ('[0:1]={1,2}'::integer[], 1), ('{1,2}'::integer[], 1)",
+    ],
+    [
+      "jsonKeys",
+      `INSERT INTO page_json_key VALUES ('{"id":9007199254740992}'::jsonb, 1), ('{"id":9007199254740993}'::jsonb, 1)`,
+    ],
+  ])(
+    "rejects lossy selected joined %s identities before SQL",
+    async (relation, insert) => {
+      await db.query(insert);
+      const qb = db
+        .getRepository(PageEvent)
+        .createQueryBuilder("e")
+        .leftJoinAndSelect(`e.${relation}`, "child");
+      const paginator = new CursorPaginator(PageEvent, {
+        orderBy: { id: "ASC" },
+      });
+      statements.length = 0;
+      await expect(paginator.paginate(qb, { limit: 1 })).rejects.toMatchObject({
+        code: "UNSUPPORTED_QUERY",
+      });
+      expect(statements).toHaveLength(0);
     },
   );
 

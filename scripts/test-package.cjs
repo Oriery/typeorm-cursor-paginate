@@ -26,6 +26,7 @@ const publicDocuments = [
   "License",
   "README.md",
   "MIGRATION.md",
+  "CHANGELOG.md",
   "docs/core-contract.md",
   "package.json",
 ];
@@ -222,18 +223,31 @@ function checkTypes(typescriptVersion) {
   for (const suffix of ["cts", "mts"]) {
     cpSync(join(fixture, "types.ts"), join(fixture, `types.${suffix}`));
   }
-  for (const mode of ["NodeNext", "Node16", "Bundler", "Node10"]) {
+  for (const mode of [
+    "NodeNext",
+    "Node16",
+    "Bundler",
+    "Node10",
+    "CommonJSDefault",
+  ]) {
     const compilerOptions = {
       ...base,
       module:
-        mode === "Bundler" ? "ESNext" : mode === "Node10" ? "CommonJS" : mode,
-      moduleResolution: mode,
+        mode === "Bundler"
+          ? "ESNext"
+          : mode === "Node10" || mode === "CommonJSDefault"
+            ? "CommonJS"
+            : mode,
+      moduleResolution: mode === "CommonJSDefault" ? undefined : mode,
     };
-    if (mode === "Node10" && Number(typescriptVersion.split(".")[0]) >= 6) {
+    if (
+      (mode === "Node10" || mode === "CommonJSDefault") &&
+      Number(typescriptVersion.split(".")[0]) >= 6
+    ) {
       compilerOptions.ignoreDeprecations = "6.0";
     }
     const files =
-      mode === "Node10" || mode === "Bundler"
+      mode === "Node10" || mode === "CommonJSDefault" || mode === "Bundler"
         ? ["types.ts", "readme.ts"]
         : [
             "types.cts",
@@ -279,6 +293,40 @@ function checkTypes(typescriptVersion) {
     }
     run(process.execPath, [compiler, "-p", config], fixture);
     console.log(`TypeScript ${typescriptVersion}: ${mode} consumer passed`);
+    const declarationConfig = `tsconfig.declarations.${mode}.json`;
+    const declarationOutput = `declarations-${mode}`;
+    writeFileSync(
+      join(fixture, declarationConfig),
+      JSON.stringify({
+        compilerOptions: {
+          ...compilerOptions,
+          noEmit: false,
+          declaration: true,
+          emitDeclarationOnly: true,
+          outDir: declarationOutput,
+        },
+        files: ["declaration-factory.ts", "declaration-consumer.ts"],
+      }),
+    );
+    run(process.execPath, [compiler, "-p", declarationConfig], fixture);
+    const emitted = readFileSync(
+      join(fixture, declarationOutput, "declaration-consumer.d.ts"),
+      "utf8",
+    );
+    assert.ok(emitted.includes('import("typeorm-cursor-paginate")'));
+    assert.ok(!emitted.includes("node_modules"));
+    assert.ok(!emitted.includes("typeorm-cursor-paginate/lib"));
+    writeFileSync(
+      join(fixture, declarationConfig),
+      JSON.stringify({
+        compilerOptions,
+        files: [`${declarationOutput}/declaration-consumer.d.ts`],
+      }),
+    );
+    run(process.execPath, [compiler, "-p", declarationConfig], fixture);
+    console.log(
+      `TypeScript ${typescriptVersion}: ${mode} declaration emit passed`,
+    );
   }
   writeFileSync(
     join(fixture, "tsconfig.readme.json"),
@@ -410,7 +458,7 @@ try {
     require("node:fs").mkdirSync(output, { recursive: true });
     const destination = join(output, basename(tarball));
     cpSync(tarball, destination);
-    console.log(`Verified release candidate: ${destination}`);
+    console.log(`Verified package artifact: ${destination}`);
   }
   success = true;
 } catch (error) {

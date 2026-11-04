@@ -2,6 +2,7 @@ import {
   Column,
   DataSource,
   Entity,
+  EntitySchema,
   ManyToOne,
   OneToMany,
   PrimaryColumn,
@@ -54,6 +55,8 @@ class CoreRecord {
 
   @OneToMany(() => CoreChild, (child) => child.record)
   children!: CoreChild[];
+
+  displayOwner?: CoreOwner | null;
 }
 
 @Entity()
@@ -571,6 +574,118 @@ describe("v3 core regressions with SQLite", () => {
       });
       expect(queries).toHaveLength(0);
       expect(qb.getQueryAndParameters()).toEqual(original);
+    },
+  );
+
+  it("preserves scoped mapped-one joins through complete entity traversal", async () => {
+    const qb = query().leftJoinAndMapOne(
+      "r.displayOwner",
+      CoreOwner,
+      "displayOwner",
+      "displayOwner.id = r.ownerId AND displayOwner.id = :visibleOwner",
+      { visibleOwner: 1 },
+    );
+    await traverse(byId(), qb, [1, 2, 3, 4, 5, 6]);
+    const first = await byId().paginate(qb, { limit: 5 });
+    expect(first.nodes.every((node) => node.displayOwner?.id === 1)).toBe(true);
+    const last = await byId().paginate(qb, {
+      limit: 5,
+      pageCursor: first.nextPageCursor,
+    });
+    expect(last.nodes[0].displayOwner).toBeNull();
+    expect(last.totalCount).toBe(6);
+    queries.length = 0;
+    await expect(byId().paginateRaw(qb, { limit: 2 })).rejects.toMatchObject({
+      code: "UNSUPPORTED_QUERY",
+    });
+    expect(queries).toHaveLength(0);
+  });
+
+  it.each([
+    ["integer", false],
+    ["integer", true],
+    ["bigint", false],
+    ["bigint", true],
+  ] as const)(
+    "rejects unsafe SQLite %s joined identities (composite: %s)",
+    async (type, composite) => {
+      class Parent {
+        id!: number;
+        children!: Child[];
+      }
+      class Child {
+        id!: number;
+        label!: string;
+        parentId!: number;
+        parent!: Parent;
+      }
+      const isolated = await new DataSource({
+        type: "better-sqlite3",
+        database: ":memory:",
+        synchronize: true,
+        entities: [
+          new EntitySchema<Parent>({
+            name: "Parent",
+            target: Parent,
+            columns: { id: { type: "integer", primary: true } },
+            relations: {
+              children: {
+                type: "one-to-many",
+                target: "Child",
+                inverseSide: "parent",
+              },
+            },
+          }),
+          new EntitySchema<Child>({
+            name: "Child",
+            target: Child,
+            columns: {
+              id: { type, primary: true },
+              label: { type: "varchar", primary: composite },
+              parentId: { type: "integer" },
+            },
+            relations: {
+              parent: {
+                type: "many-to-one",
+                target: "Parent",
+                joinColumn: { name: "parentId" },
+              },
+            },
+          }),
+        ],
+      }).initialize();
+      try {
+        await isolated.query("INSERT INTO parent VALUES (1)");
+        await isolated.query(
+          "INSERT INTO child VALUES (1, 'label', 1), (2, 'label', 1)",
+        );
+        const qb = isolated
+          .getRepository(Parent)
+          .createQueryBuilder("parent")
+          .leftJoinAndSelect("parent.children", "child");
+        const paginator = new CursorPaginator(Parent, {
+          orderBy: { id: "ASC" },
+        });
+        expect(
+          (await paginator.paginate(qb, { limit: 1 })).nodes[0].children,
+        ).toHaveLength(2);
+        await isolated.query("DELETE FROM child");
+        await isolated.query(
+          "INSERT INTO child VALUES (9007199254740992, 'label', 1), (9007199254740993, 'label', 1)",
+        );
+        expect(
+          await isolated.query(
+            "SELECT CAST(id AS text) AS id FROM child ORDER BY id",
+          ),
+        ).toEqual([{ id: "9007199254740992" }, { id: "9007199254740993" }]);
+        const before = qb.getQueryAndParameters();
+        await expect(
+          paginator.paginate(qb, { limit: 1 }),
+        ).rejects.toMatchObject({ code: "UNSUPPORTED_VALUE" });
+        expect(qb.getQueryAndParameters()).toEqual(before);
+      } finally {
+        await isolated.destroy();
+      }
     },
   );
 

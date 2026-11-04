@@ -271,6 +271,33 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
       hydrate.addSelect(`${hydrate.alias}.${column.propertyPath}`);
     const hydrationAliases = this.addBoundaries(hydrate, orders, false);
     const hydrated = await hydrate.getRawAndEntities();
+    if (base.connection.options.type !== "postgres") {
+      const joinedKeys = base.expressionMap.joinAttributes.flatMap((join) =>
+        join.isSelected && join.metadata
+          ? join.metadata.primaryColumns.map((column) =>
+              DriverUtils.buildAlias(
+                base.connection.driver,
+                undefined,
+                join.alias.name,
+                column.databaseName,
+              ),
+            )
+          : [],
+      );
+      // SQLite can store 64-bit integers even in an ordinary INTEGER column. The
+      // driver may round them before TypeORM groups entities, silently merging keys.
+      for (const row of hydrated.raw as Record<string, unknown>[]) {
+        for (const key of joinedKeys) {
+          const value = row[key];
+          if (typeof value === "number" && !Number.isSafeInteger(value)) {
+            throw new PaginationInputError(
+              "UNSUPPORTED_VALUE",
+              "SQLite joined primary keys must remain safe integers after driver conversion",
+            );
+          }
+        }
+      }
+    }
     for (const entity of hydrated.entities) {
       for (const column of hiddenPrimary) {
         const path = column.propertyPath.split(".");
@@ -386,9 +413,22 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
     if (map.aliases.filter((item) => item.type === "from").length !== 1)
       unsupported("Additional FROM sources are not supported");
     for (const join of map.joinAttributes) {
-      if (!join.relation || join.mapToProperty)
-        unsupported("Only mapped relation joins are supported");
-      if (raw && (join.relation!.isOneToMany || join.relation!.isManyToMany))
+      const mappedOne =
+        !!join.mapToProperty &&
+        join.isMappingMany === false &&
+        !!join.metadata &&
+        map.aliases.some(
+          (source) =>
+            source.name === join.mapToPropertyParentAlias && source.hasMetadata,
+        );
+      if ((!join.relation && !mappedOne) || (join.mapToProperty && !mappedOne))
+        unsupported(
+          "Only relation joins and metadata-backed mapped-one joins are supported",
+        );
+      if (
+        raw &&
+        (mappedOne || join.relation!.isOneToMany || join.relation!.isManyToMany)
+      )
         unsupported("Raw pages support only to-one relation joins");
       if (!raw && join.isSelected && join.metadata) {
         const primary = join.metadata.primaryColumns;
@@ -407,22 +447,31 @@ export class CursorPaginator<TEntity extends ObjectLiteral> {
           "boolean",
           "bool",
         ];
+        const textIdentityTypes = [
+          "text",
+          "varchar",
+          "character varying",
+          "char",
+          "character",
+          "enum",
+          "simple-enum",
+        ];
+        // With one text component, delimiter-free components on each side still
+        // identify its boundaries. Two text components could redistribute underscores.
+        const textComponents = types.filter((type) =>
+          textIdentityTypes.includes(type),
+        );
         if (
-          types.some((type) =>
-            [
-              "timestamp",
-              "timestamp without time zone",
-              "timestamptz",
-              "timestamp with time zone",
-              "datetime",
-              "date",
-            ].includes(type),
+          primary.some((column) => column.isArray) ||
+          types.some(
+            (type) =>
+              !exactIdentityTypes.includes(type) &&
+              !textIdentityTypes.includes(type),
           ) ||
-          (primary.length > 1 &&
-            types.some((type) => !exactIdentityTypes.includes(type)))
+          textComponents.length > 1
         ) {
           unsupported(
-            "Selected joined entities require exact, unambiguous primary keys; temporal and delimiter-sensitive composite keys are unsupported",
+            "Selected joined entities require scalar integer, boolean, UUID or text primary keys, with at most one text/enum component",
           );
         }
       }
