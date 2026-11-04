@@ -28,6 +28,7 @@ const publicDocuments = [
   "MIGRATION.md",
   "CHANGELOG.md",
   "docs/core-contract.md",
+  "docs/usage.md",
   "package.json",
 ];
 
@@ -114,23 +115,26 @@ function inspectPackage(files, expected) {
   }
 }
 
-function writeReadmeExamples() {
-  const readme = readFileSync(join(installed, "README.md"), "utf8");
-  const blocks = [...readme.matchAll(/```typescript\r?\n([\s\S]*?)```/g)].map(
-    (match) => match[1],
-  );
+function writeDocumentationExamples() {
+  const documentation = ["README.md", "docs/usage.md"]
+    .map((file) => readFileSync(join(installed, file), "utf8"))
+    .join("\n");
+  const blocks = [
+    ...documentation.matchAll(/```typescript\r?\n([\s\S]*?)```/g),
+  ].map((match) => match[1]);
   const used = new Set();
   function example(marker) {
     const matches = blocks.filter((block) => block.includes(marker));
     assert.equal(
       matches.length,
       1,
-      `README must contain one executable ${marker} example`,
+      `Documentation must contain one executable ${marker} example`,
     );
     used.add(matches[0]);
     return matches[0];
   }
   const entity = example("async function readUsers(");
+  const navigation = example("const first = await readUsers(");
   const codec = example(
     "class JsonCursorTransformer implements CursorTransformer",
   );
@@ -141,7 +145,7 @@ function writeReadmeExamples() {
   assert.equal(
     used.size,
     blocks.length,
-    "Every README TypeScript block needs an executable fixture",
+    "Every README and usage-guide TypeScript block needs an executable fixture",
   );
   // Imports belong at module scope; preserve the executable snippet within its own block.
   const standaloneImports = standalone.match(/^import[\s\S]*?;\s*/gm) ?? [];
@@ -162,7 +166,7 @@ async function verifyReadme() {
       { id: 2, name: "c", ownerId: 7 }, { id: 1, name: "c", ownerId: 7 },
       { id: 5, name: "hidden", ownerId: 8 },
     ]);
-    const { first, second, back } = await readUsers(dataSource, 7);
+    ${navigation}
     assert.deepEqual(first.nodes.map(user => user.id), [4, 3]);
     assert.deepEqual(second.nodes.map(user => user.id), [2, 1]);
     assert.deepEqual(back.nodes, first.nodes);
@@ -201,7 +205,7 @@ async function verifyReadme() {
     await assert.rejects(custom.paginate(query, { pageCursor: "v3:[]" }), error => error instanceof ExampleInputError && error.code === "INVALID_CURSOR");
   } finally { await dataSource.destroy(); }
 }
-verifyReadme().then(() => console.log("All installed README TypeScript examples passed"), error => { console.error(error); process.exitCode = 1; });
+verifyReadme().then(() => console.log("All installed README and usage-guide TypeScript examples passed"), error => { console.error(error); process.exitCode = 1; });
 `,
   );
 }
@@ -448,7 +452,7 @@ try {
     versions[name] = installedVersion(name, fixture);
   run(process.execPath, ["consumer.cjs"], fixture);
   run(process.execPath, ["consumer.mjs"], fixture);
-  writeReadmeExamples();
+  writeDocumentationExamples();
   checkTypes(versions.typescript);
   console.log(
     `All packed consumers passed on ${process.version}; dependencies ${JSON.stringify(versions)}`,

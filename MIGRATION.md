@@ -2,7 +2,7 @@
 
 ## v2 to v3
 
-v3 is a deliberate major release: it changes cursor format, validation, ordering guarantees, raw-result types, package entry points, and runtime support. Validate the packed `3.0.0` artifact before adopting it. See the [release notes](CHANGELOG.md) for publication status and verification.
+v3 is a deliberate major release: it changes cursor format, validation, ordering guarantees, raw-result types, package entry points, and runtime support. Review the changes below before upgrading. The [release notes](CHANGELOG.md) summarize v3 behavior.
 
 ### Restart existing pagination
 

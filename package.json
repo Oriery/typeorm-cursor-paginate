@@ -1,7 +1,7 @@
 {
   "name": "typeorm-cursor-paginate",
   "version": "3.0.0",
-  "description": "Cursor-based pagination with directional cursors.",
+  "description": "Bidirectional cursor pagination for TypeORM with PostgreSQL and SQLite.",
   "keywords": [
     "directional",
     "cursor",
@@ -79,7 +79,8 @@
     "MIGRATION.md",
     "CHANGELOG.md",
     "License",
-    "docs/core-contract.md"
+    "docs/core-contract.md",
+    "docs/usage.md"
   ],
   "engines": {
     "node": "^22.13.0 || ^24.11.0 || ^26.0.0"
