@@ -72,7 +72,7 @@ Production compilation emits ES2022 CommonJS JavaScript and matching declaration
 
 `lib/` and `artifacts/` are generated output and are not committed. Set `PACKAGE_OUTPUT_DIR=artifacts` when running `test:package` to keep the verified tarball for a separate consumer or release.
 
-The exact `minimatch` and `glob` overrides address development-tool advisories until upstream dependency ranges accept patched versions. The remaining `deepmerge` advisory concerns Jest configuration merging and is tracked in [issue #20](https://github.com/Oriery/typeorm-cursor-paginate/issues/20); it is not a distributed runtime dependency.
+The exact `minimatch` and `glob` overrides address development-tool advisories until upstream dependency ranges accept patched versions.
 
 ## Release verification
 
