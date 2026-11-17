@@ -1,6 +1,6 @@
 # v3 work plan
 
-This records the implementation and acceptance work for `typeorm-cursor-paginate@3.0.0`, published on 2026-11-04.
+This records the implementation and acceptance work for `typeorm-cursor-paginate@3.0.0`, published on 2026-11-04, and subsequent v3 maintenance releases.
 The original plan combined the README backlog, the timestamp issue, and a code audit of commit `6676ee5`.
 Breaking API and cursor-format changes are documented in the [migration guide](MIGRATION.md); the stages below preserve their validation history.
 
@@ -342,4 +342,10 @@ Additional generic acceptance in [PR #23](https://github.com/Oriery/typeorm-curs
 
 The registry artifact was downloaded into a fresh directory and compared byte for byte with the verified local tarball. Its SHA-256 is `2d0747b6a93d09e192f0767ad44802b0359f5c2eb4e6217912fda91875908691`; npm reports integrity `sha512-7Whuw30jxT8zOpJC/eAUyd8yfEhg8zI5R016TN9uoG1uqNJpULmbE47iNvFedK5YRCKvVXdOpg3apnphIZ82jg==`.
 
-Installed-registry checks passed on Node 24.21.0 with TypeORM 1.1.2, better-sqlite3 12.11.1 and TypeScript 6.0.3: CommonJS, native ESM, shared constructor identity, all five TypeScript consumer/declaration modes, the production-file allowlist, and all seven executable README and usage-guide examples. The registry confirms `latest: 3.0.0`.
+Installed-registry checks passed on Node 24.21.0 with TypeORM 1.1.2, better-sqlite3 12.11.1 and TypeScript 6.0.3: CommonJS, native ESM, shared constructor identity, all five TypeScript consumer/declaration modes, the production-file allowlist, and all seven executable README and usage-guide examples. The registry confirmed `latest: 3.0.0` at publication.
+
+## Patch release 3.0.1
+
+Prepared on 2026-11-17 after merging [PR #26](https://github.com/Oriery/typeorm-cursor-paginate/pull/26). This release restores the README download and license badges, includes the reviewed development-tool updates, and makes the publication instructions follow the manifest version. The historical total-download badge endpoint now redirects to an 18-month window, so the restored badge names that period explicitly. Runtime source, build scripts, consumer fixtures and support policy are unchanged from 3.0.0.
+
+A clean `npm ci` and `PACKAGE_OUTPUT_DIR=artifacts npm run check` passed on Node 24.21.0: lint, formatting, types, 220 SQLite/input tests, 48 PostgreSQL tests, reproducible packing, installed CommonJS/ESM consumers, all five TypeScript resolution/declaration modes, and runnable documentation examples. The verified artifact is `artifacts/typeorm-cursor-paginate-3.0.1.tgz`, SHA-256 `ea780986252579d4b1cc796bae76bb7bc7f9c260b1a95cdf126573d7b75b1f40`. Independent review found no release blockers; registry publication and downloaded-artifact verification remain the final steps.

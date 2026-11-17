@@ -1,5 +1,8 @@
 # TypeORM Cursor Paginator
 
+[![npm downloads (last 18 months)](https://img.shields.io/npm/d18m/typeorm-cursor-paginate.svg?style=flat-square&label=downloads%20%2818%20months%29)](https://www.npmcharts.com/compare/typeorm-cursor-paginate?minimal=true)
+[![License](https://img.shields.io/npm/l/typeorm-cursor-paginate.svg?style=flat-square)](https://www.npmjs.com/package/typeorm-cursor-paginate)
+
 Cursor-based pagination for TypeORM queries on PostgreSQL and SQLite. Build feeds, infinite-scroll lists and paginated APIs by fetching records before or after an ordered boundary, rather than counting offsets or page numbers.
 
 Each cursor carries its direction. Pass a returned `nextPageCursor` or `prevPageCursor` back through the same `pageCursor` option to move forward or backward.

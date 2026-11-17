@@ -1,5 +1,12 @@
 # Release notes
 
+## 3.0.1
+
+- Restore npm download statistics and the license badge in the README. The download badge explicitly shows the last 18 months, matching the current provider's reporting window.
+- Refresh development-tool dependencies and retain patched minimatch/glob overrides while upstream ranges still require affected releases. The deepmerge advisory was withdrawn; the contributor documentation now reflects its resolution.
+
+The runtime API, cursor format and supported consumer versions are unchanged from 3.0.0.
+
 ## 3.0.0
 
 This major release replaces v2 cursor and query behavior. Read [MIGRATION.md](MIGRATION.md) before upgrading; discard v2 cursors and restart cached pagination.

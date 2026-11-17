@@ -84,20 +84,21 @@ Known query-shape, precision and consistency limits are in the [core contract](d
 Publish only the verified artifact with an authorized npm account:
 
 ```sh
+paginator_version=$(node -p "require('./package.json').version")
 PACKAGE_OUTPUT_DIR=artifacts npm run test:package
 npm whoami
-npm publish ./artifacts/typeorm-cursor-paginate-3.0.0.tgz --access public --tag latest
+npm publish "./artifacts/typeorm-cursor-paginate-${paginator_version}.tgz" --access public --tag latest
 ```
 
-npm scans newly published packages before making them installable. A successful publish can report that processing is still pending; wait until `npm view typeorm-cursor-paginate@3.0.0 version --prefer-online` returns the version before running the registry checks. See [npm's publish-time scanning policy](https://github.blog/changelog/2026-07-28-npm-publish-time-malware-scanning-and-dual-use-metadata/).
+npm scans newly published packages before making them installable. A successful publish can report that processing is still pending; wait until `npm view "typeorm-cursor-paginate@${paginator_version}" version --prefer-online` returns the version before running the registry checks. See [npm's publish-time scanning policy](https://github.blog/changelog/2026-07-28-npm-publish-time-malware-scanning-and-dual-use-metadata/).
 
-Once the version is available, download the registry artifact to a fresh directory and run the same installed-consumer checks against it:
+Once the version is available, download the registry artifact to a fresh directory and run the same installed-consumer checks against it in the same shell:
 
 ```sh
-mkdir -p /tmp/paginator-registry-v3
-npm pack typeorm-cursor-paginate@3.0.0 --pack-destination /tmp/paginator-registry-v3
-PACKAGE_TARBALL=/tmp/paginator-registry-v3/typeorm-cursor-paginate-3.0.0.tgz npm run test:package
-npm view typeorm-cursor-paginate@3.0.0 version dist.integrity
+paginator_registry_dir=$(mktemp -d "${TMPDIR:-/tmp}/paginator-registry.XXXXXX")
+npm pack "typeorm-cursor-paginate@${paginator_version}" --pack-destination "$paginator_registry_dir"
+PACKAGE_TARBALL="$paginator_registry_dir/typeorm-cursor-paginate-${paginator_version}.tgz" npm run test:package
+npm view "typeorm-cursor-paginate@${paginator_version}" version dist.integrity
 ```
 
 Compare the downloaded tarball hash with the verified local artifact before recording the release as published and tagging its commit.
