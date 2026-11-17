@@ -72,7 +72,7 @@ Production compilation emits ES2022 CommonJS JavaScript and matching declaration
 
 `lib/` and `artifacts/` are generated output and are not committed. Set `PACKAGE_OUTPUT_DIR=artifacts` when running `test:package` to keep the verified tarball for a separate consumer or release.
 
-The exact `minimatch` and `glob` overrides address development-tool advisories until upstream dependency ranges accept patched versions.
+The exact `minimatch` and `glob` overrides keep development tools on patched releases while Jest, typescript-eslint and test-exclude still require affected older majors. Remove an override only after every dependency path resolves to patched versions without it, then run the full check. Check upstream maintainer advisories as well as `npm audit`: newly published advisories may not yet appear in the audit response. These dependencies are not part of the distributed runtime.
 
 ## Release verification
 
